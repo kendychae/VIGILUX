@@ -6,6 +6,11 @@ const helmet = require('helmet');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Import routes
+const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
+const reportRoutes = require('./routes/report.routes');
+
 // Middleware
 app.use(helmet());
 app.use(cors());
@@ -21,7 +26,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes - to be implemented
+// API Routes
 app.get('/api/v1', (req, res) => {
   res.json({ 
     message: 'iSPY API v1.0',
@@ -33,6 +38,11 @@ app.get('/api/v1', (req, res) => {
     }
   });
 });
+
+// Mount route handlers
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/reports', reportRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

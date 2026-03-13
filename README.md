@@ -141,9 +141,10 @@ Before you begin, ensure you have the following installed:
 
    # Copy environment variables
    cp .env.example .env
+   # Edit .env with your database credentials
 
-   # Edit .env with your configuration
-   # Then create the database
+   # Create database and run migrations
+   createdb ispy_db
    npm run migrate
    ```
 
@@ -152,6 +153,10 @@ Before you begin, ensure you have the following installed:
    ```bash
    cd ../frontend
    npm install
+
+   # Copy environment variables
+   cp .env.example .env
+   # Default settings work for local development
    ```
 
 4. **Start Development Servers**
@@ -161,6 +166,7 @@ Before you begin, ensure you have the following installed:
    ```bash
    cd backend
    npm run dev
+   # Server runs on http://localhost:3000
    ```
 
    Frontend:
@@ -168,23 +174,46 @@ Before you begin, ensure you have the following installed:
    ```bash
    cd frontend
    npm start
+   # Scan QR code or press 'i' for iOS, 'a' for Android
    ```
+
+5. **Test the App**
+
+   Default login credentials:
+   - Email: `admin@ispy.app`
+   - Password: `Admin@123`
 
 ### Environment Configuration
 
-Create a `.env` file in the backend directory with the following variables:
+#### Backend `.env`
 
 ```env
-PORT=3000
 NODE_ENV=development
+PORT=3000
+
+# PostgreSQL Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=ispy_db
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-JWT_SECRET=your_jwt_secret_here
-FIREBASE_PROJECT_ID=your_firebase_project_id
+DB_USER=postgres
+DB_PASSWORD=your_password_here
+
+# JWT Secrets (Change in production!)
+JWT_SECRET=your-super-secret-key-min-32-chars
+JWT_REFRESH_SECRET=your-refresh-secret-key-min-32-chars
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
 ```
+
+#### Frontend `.env`
+
+```env
+# API URL - use your computer IP for physical devices
+REACT_APP_API_URL=http://localhost:3000/api/v1
+# Example for physical device: http://192.168.1.100:3000/api/v1
+```
+
+**📖 See [QUICK-START.md](docs/canvas-submissions/QUICK-START.md) for detailed setup instructions.**
 
 ---
 
@@ -194,28 +223,31 @@ FIREBASE_PROJECT_ID=your_firebase_project_id
 iSPY/
 ├── backend/                 # Node.js backend application
 │   ├── src/
-│   │   ├── config/         # Configuration files
-│   │   ├── database/       # Database schema and migrations
-│   │   ├── middleware/     # Express middleware
+│   │   ├── config/         # Database configuration
+│   │   ├── controllers/    # Route controllers (auth, reports, users)
+│   │   ├── database/       # Schema and migrations
+│   │   ├── middleware/     # Auth & validation middleware
 │   │   ├── routes/         # API routes
-│   │   ├── controllers/    # Route controllers
-│   │   ├── models/         # Data models
-│   │   └── server.js       # Entry point
-│   ├── .env.example        # Environment variables template
+│   │   └── server.js       # Express app entry point
+│   ├── .env.example        # Environment template
 │   └── package.json
 │
-├── frontend/               # React Native mobile app
+├── frontend/               # React Native (Expo) app
 │   ├── src/
-│   │   ├── screens/       # App screens/pages
-│   │   ├── components/    # Reusable components
-│   │   ├── services/      # API and external services
-│   │   ├── navigation/    # Navigation configuration
-│   │   ├── utils/         # Utility functions
-│   │   └── App.js         # Root component
+│   │   ├── screens/       # App screens (Login, Home, Map, etc.)
+│   │   ├── services/      # API client & auth service
+│   │   ├── utils/         # Secure storage utilities
+│   │   └── App.js         # Navigation & root component
+│   ├── .env.example       # Environment template
 │   └── package.json
 │
-├── docs/                   # Documentation and Canvas submissions
-├── .gitignore
+├── docs/                  # Documentation
+│   ├── AUTH-FLOW.md       # Authentication architecture
+│   ├── NAVIGATION-FLOW.md # App navigation structure
+│   └── canvas-submissions/
+│       ├── week3-implementation-summary.md
+│       └── QUICK-START.md
+│
 ├── LICENSE
 └── README.md
 ```
@@ -226,11 +258,67 @@ iSPY/
 
 Additional documentation can be found in the `/docs` directory:
 
+### Week 3 Submissions ✅
+
+- [Week 3 Implementation Summary](docs/canvas-submissions/week3-implementation-summary.md)
+- [Quick Start Guide](docs/canvas-submissions/QUICK-START.md)
+- [Authentication Flow](docs/AUTH-FLOW.md)
+- [Navigation Flow](docs/NAVIGATION-FLOW.md)
+
+### Project Documentation
+
 - [Project Plan](docs/canvas-submissions/project-plan.md)
 - [Git Setup Guide](docs/canvas-submissions/git-setup.md)
-- [API Documentation](docs/api-documentation.md) (Coming Soon)
-- [Database Schema](docs/database-schema.md) (Coming Soon)
-- [User Guide](docs/user-guide.md) (Coming Soon)
+- [Sprint Records](docs/canvas-submissions/)
+- [Development Guide](docs/DEVELOPMENT.md)
+
+### Technical Documentation
+
+- Database Schema: `backend/src/database/schema.sql`
+- API Routes: `backend/src/routes/`
+- Screen Components: `frontend/src/screens/`
+
+---
+
+## ✅ Week 3 Accomplishments
+
+All Week 3 tasks have been successfully completed:
+
+### Backend
+
+- ✅ Complete JWT authentication system with refresh tokens
+- ✅ User registration and login endpoints
+- ✅ Password hashing with bcrypt (12 rounds)
+- ✅ Protected route middleware
+- ✅ Request validation middleware
+- ✅ Database migration scripts
+- ✅ Environment configuration templates
+
+### Frontend
+
+- ✅ Secure token storage using Expo SecureStore
+- ✅ Auto token refresh mechanism
+- ✅ Complete navigation system (Stack + Tab navigation)
+- ✅ Protected route guards
+- ✅ Navigation animations and transitions
+- ✅ Professional UI for all screens:
+  - Login Screen
+  - Register Screen
+  - Forgot Password Screen
+  - Home Screen
+  - Map Screen with location
+  - Report Screen with form
+  - Profile Screen with logout
+
+### Security Features
+
+- ✅ Keychain storage (iOS) / EncryptedSharedPreferences (Android)
+- ✅ Automatic token rotation
+- ✅ Secure password requirements
+- ✅ CORS configuration
+- ✅ Security headers (Helmet.js)
+
+**Default Login**: admin@ispy.app / Admin@123
 
 ---
 

@@ -1,48 +1,248 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { StyleSheet, View, Text } from 'react-native';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
+
+// Auth Screens
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+
+// Main App Screens
+import HomeScreen from './screens/HomeScreen';
+import MapScreen from './screens/MapScreen';
+import ReportScreen from './screens/ReportScreen';
+import ProfileScreen from './screens/ProfileScreen';
+
+// Services
+import { authService } from './services/authService';
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// Placeholder screens - to be implemented
-const HomeScreen = () => (
-  <View style={styles.container}>
-    <Text style={styles.title}>iSPY - Neighborhood Watch</Text>
-    <Text style={styles.subtitle}>Coming Soon</Text>
-  </View>
-);
+/**
+ * Auth Stack Navigator - Unauthenticated users
+ */
+const AuthStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#007AFF',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+        // Slide animation from right
+        cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
+      }}
+    >
+      <Stack.Screen 
+        name="Login" 
+        component={LoginScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Register" 
+        component={RegisterScreen}
+        options={{
+          title: 'Create Account',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen 
+        name="ForgotPassword" 
+        component={ForgotPasswordScreen}
+        options={{
+          title: 'Reset Password',
+          headerBackTitle: 'Back',
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
 
+/**
+ * Main Tab Navigator - Authenticated users
+ */
+const MainTabs = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#007AFF',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: '#999',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#e0e0e0',
+          paddingBottom: 5,
+          paddingTop: 5,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
+      }}
+    >
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen}
+        options={{
+          title: 'iSPY',
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>🏠</Text>
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Map" 
+        component={MapScreen}
+        options={{
+          title: 'Incident Map',
+          tabBarLabel: 'Map',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>🗺️</Text>
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Report" 
+        component={ReportScreen}
+        options={{
+          title: 'New Report',
+          tabBarLabel: 'Report',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>📝</Text>
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>👤</Text>
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+/**
+ * Root Navigator with Protected Routes
+ */
+const RootNavigator = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(null); // null = checking, true/false = result
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const authenticated = await authService.isAuthenticated();
+      setIsAuthenticated(authenticated);
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.logo}>🔍</Text>
+        <Text style={styles.appName}>iSPY</Text>
+        <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        // Fade animation for auth state transitions
+        cardStyleInterpolator: CardStyleInterpolators.forFadeFromBottomAndroid,
+      }}
+    >
+      {isAuthenticated ? (
+        <Stack.Screen 
+          name="Main" 
+          component={MainTabs}
+          options={{
+            animationEnabled: true,
+          }}
+        />
+      ) : (
+        <Stack.Screen 
+          name="Auth" 
+          component={AuthStack}
+          options={{
+            animationEnabled: true,
+          }}
+        />
+      )}
+    </Stack.Navigator>
+  );
+};
+
+/**
+ * Main App Component
+ */
 const App = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen 
-          name="Home" 
-          component={HomeScreen}
-          options={{ title: 'iSPY' }}
-        />
-      </Stack.Navigator>
+      <RootNavigator />
     </NavigationContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
-  title: {
-    fontSize: 24,
+  logo: {
+    fontSize: 80,
+    marginBottom: 16,
+  },
+  appName: {
+    fontSize: 36,
     fontWeight: 'bold',
-    marginBottom: 10,
+    color: '#1a1a1a',
+    marginBottom: 32,
   },
-  subtitle: {
+  loader: {
+    marginVertical: 20,
+  },
+  loadingText: {
     fontSize: 16,
     color: '#666',
   },
 });
 
 export default App;
+
