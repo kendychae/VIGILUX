@@ -371,6 +371,8 @@ Track our progress on [GitHub Projects](https://github.com/users/kendychae/proje
 
 > _"The wicked flee when no one pursueth, but the rightous are bold as a lion"_  
 > **— Proverbs 28:1** (Brenden Lyon)
+> _"Tomorrow is never promised. Live a life that will be remembered. Love and respect everyone, and always extend a helping hand to those in need."_  
+> **— Samuel Evbosaru**
 
 ---
 
