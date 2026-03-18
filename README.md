@@ -5,10 +5,12 @@
 <div align="center">
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![License](https://img.shields.io/badge/license-Proprietary-red.svg)
 ![Status](https://img.shields.io/badge/status-In_Development-yellow.svg)
 
 **Empowering communities to report and track illegal activity quickly and safely.**
+
+⚠️ **PROPRIETARY SOFTWARE** - This software is NOT open source. All rights reserved. Commercial use requires a paid license. See [LICENSE](LICENSE) for details.
 
 [Features](#features) • [Technology Stack](#technology-stack) • [Getting Started](#getting-started) • [Documentation](#documentation) • [Team](#team)
 
@@ -431,7 +433,40 @@ Please ensure your code follows our coding standards and includes appropriate te
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**⚠️ PROPRIETARY LICENSE - All Rights Reserved**
+
+This software is the proprietary intellectual property of the iSPY Development Team.
+
+### ❌ **NOT Open Source**
+
+This code is provided for **viewing and educational purposes only**. Any use, deployment, or commercialization requires explicit written permission and a commercial license agreement.
+
+### 💰 **Commercial Licensing**
+
+Interested in using iSPY for your:
+
+- City or municipality?
+- Police department?
+- Community organization?
+- Commercial deployment?
+
+**Contact us for licensing:** [Open a GitHub Issue](https://github.com/kendychae/i-SPY/issues) or email the project team.
+
+### ✅ **What You CAN Do (Without Permission)**
+
+- View the source code for educational purposes
+- Study the architecture and implementation for learning
+- Reference the approach in academic work (with proper citation)
+
+### ❌ **What You CANNOT Do (Without a Paid License)**
+
+- Deploy this software for any community, city, or organization
+- Use this code in any commercial product or service
+- Create derivative works for commercial purposes
+- Redistribute or sublicense the software
+- Remove or modify copyright notices
+
+See the full [LICENSE](LICENSE) file for complete terms and conditions.
 
 ---
 
