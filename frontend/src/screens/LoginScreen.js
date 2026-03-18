@@ -30,9 +30,18 @@ const LoginScreen = ({ navigation }) => {
       const result = await authService.login(email.trim(), password);
 
       if (result.success) {
-        // Navigation will be handled automatically by the auth state change
-        // The App component will detect the authentication and redirect
-        navigation.replace('Main');
+        // Reload the app to trigger auth state check
+        Alert.alert('Success', 'Login successful!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Force reload by reloading the window in web
+              if (Platform.OS === 'web') {
+                window.location.reload();
+              }
+            }
+          }
+        ]);
       } else {
         Alert.alert('Login Failed', result.message || 'Invalid credentials');
       }

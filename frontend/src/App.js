@@ -153,6 +153,10 @@ const RootNavigator = () => {
 
   useEffect(() => {
     checkAuthStatus();
+    
+    // Re-check auth status every 2 seconds to catch login/logout
+    const interval = setInterval(checkAuthStatus, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const checkAuthStatus = async () => {
