@@ -34,8 +34,8 @@ No later than Tuesday each team member should record what features they will be 
 | Samuel Iyen Evbosaru | Create user registration API endpoint with password hashing | 6          |
 | Brenden Taylor Lyon  | Build login screen UI with form validation                  | 8          |
 | Brenden Taylor Lyon  | Implement authentication state management in React Native   | 6          |
-| Figuelia Ya'Sin      | Create secure token storage using AsyncStorage/SecureStore  | 5          |
-| Figuelia Ya'Sin      | Integrate login API with frontend authentication flow       | 5          |
+| Kendahl Chae Bingham | Create secure token storage using AsyncStorage/SecureStore  | 5          |
+| Kendahl Chae Bingham | Integrate login API with frontend authentication flow       | 5          |
 
 ### Feature 2: Database Schema Setup
 
@@ -43,11 +43,11 @@ No later than Tuesday each team member should record what features they will be 
 
 | Person Assigned      | Task Name & Brief Description                            | Est. Hours |
 | -------------------- | -------------------------------------------------------- | ---------- |
-| Samuel Iyen Evbosaru | Design and implement users table with proper constraints | 4          |
+| Figuelia Ya'Sin      | Design and implement users table with proper constraints | 4          |
 | Samuel Iyen Evbosaru | Create reports table with foreign key relationships      | 4          |
 | Kendahl Chae Bingham | Review database schema and ensure normalization          | 2          |
-| Figuelia Ya'Sin      | Create database migration scripts and seed data          | 4          |
-| Figuelia Ya'Sin      | Test database connectivity and CRUD operations           | 3          |
+| Kendahl Chae Bingham | Create database migration scripts and seed data          | 4          |
+| Brenden Taylor Lyon  | Test database connectivity and CRUD operations           | 3          |
 
 ### Feature 3: Basic Navigation Structure
 
@@ -55,28 +55,31 @@ No later than Tuesday each team member should record what features they will be 
 
 | Person Assigned      | Task Name & Brief Description                              | Est. Hours |
 | -------------------- | ---------------------------------------------------------- | ---------- |
-| Brenden Taylor Lyon  | Set up React Navigation with tab and stack navigators      | 6          |
-| Brenden Taylor Lyon  | Create placeholder screens (Home, Map, Report, Profile)    | 5          |
+| Kendahl Chae Bingham | Set up React Navigation with tab and stack navigators      | 6          |
+| Kendahl Chae Bingham | Create placeholder screens (Home, Map, Report, Profile)    | 5          |
 | Kendahl Chae Bingham | Design app navigation flow and screen hierarchy            | 3          |
-| Figuelia Ya'Sin      | Implement protected route guards for authenticated screens | 4          |
-| Figuelia Ya'Sin      | Add navigation animations and transitions                  | 3          |
+| Kendahl Chae Bingham | Implement protected route guards for authenticated screens | 4          |
+| Kendahl Chae Bingham | Add navigation animations and transitions                  | 3          |
 
 ---
 
 ## Standup
 
-Record the results of your standup meeting.
+Record the results of your standup meeting (March 18, 2026).
 
-| Person               | Feature/Task               | Progress Notes                                          | Blockers/Help Needed                    |
-| -------------------- | -------------------------- | ------------------------------------------------------- | --------------------------------------- |
-| Kendahl Chae Bingham | Authentication Flow Design | Completed UML diagrams and API endpoint specifications  | None                                    |
-| Kendahl Chae Bingham | Database Schema Review     | In progress - reviewing normalization and relationships | None                                    |
-| Samuel Iyen Evbosaru | JWT Middleware             | 80% complete - working on token refresh logic           | Need clarification on token expiry time |
-| Samuel Iyen Evbosaru | Users Table Implementation | Completed with constraints and indexes                  | None                                    |
-| Brenden Taylor Lyon  | Login Screen UI            | 60% complete - adding form validation                   | None                                    |
-| Brenden Taylor Lyon  | React Navigation Setup     | Completed basic structure with placeholder screens      | None                                    |
-| Figuelia Ya'Sin      | Secure Token Storage       | Completed implementation using Expo SecureStore         | None                                    |
-| Figuelia Ya'Sin      | Database Migration Scripts | In progress - creating seed data for testing            | None                                    |
+| Person               | Feature/Task                    | Progress Notes                                         | Blockers/Help Needed |
+| -------------------- | ------------------------------- | ------------------------------------------------------ | -------------------- |
+| Kendahl Chae Bingham | Authentication Flow Design      | Completed - UML diagrams and API specs finalized       | None                 |
+| Kendahl Chae Bingham | Secure Token Storage            | Completed - using Expo SecureStore                     | None                 |
+| Kendahl Chae Bingham | React Navigation Setup          | Completed - all screens and navigators working         | None                 |
+| Kendahl Chae Bingham | Database Migration Scripts      | Completed - seed data created and tested               | None                 |
+| Samuel Iyen Evbosaru | JWT Middleware                  | Completed - token validation fully functional          | None                 |
+| Samuel Iyen Evbosaru | User Registration API           | Completed - endpoint tested with password hashing      | None                 |
+| Samuel Iyen Evbosaru | Reports Table Implementation    | Completed - foreign keys and relationships established | None                 |
+| Brenden Taylor Lyon  | Login Screen UI                 | Completed - form validation working                    | None                 |
+| Brenden Taylor Lyon  | Authentication State Management | Completed - integrated with secure storage             | None                 |
+| Brenden Taylor Lyon  | Database Connectivity Testing   | Completed - CRUD operations tested                     | None                 |
+| Figuelia Ya'Sin      | Users Table Implementation      | Completed - proper constraints and indexes added       | None                 |
 
 ---
 
@@ -100,32 +103,31 @@ Record the results of your standup meeting.
 - Oversee authentication system architecture and design
 - Coordinate team activities and resolve blockers
 - Review and approve database schema
-- Design overall app navigation flow
-- Total estimated hours: 11
+- Design overall app navigation flow and implement all navigation features
+- Implement secure token storage and API integration
+- Create database migration scripts
+- Total estimated hours: 43
 
 **Samuel Iyen Evbosaru (Backend Developer):**
 
 - Implement JWT authentication middleware
-- Create user registration and login endpoints
-- Design and implement core database tables
+- Create user registration endpoint with password hashing
+- Design and implement reports table with relationships
 - Ensure proper error handling and validation
-- Total estimated hours: 22
+- Total estimated hours: 18
 
 **Brenden Taylor Lyon (Frontend Developer):**
 
 - Build login screen with form validation
 - Implement authentication state management
-- Set up React Navigation structure
-- Create placeholder screens for main features
-- Total estimated hours: 25
+- Test database connectivity and CRUD operations
+- Total estimated hours: 17
 
-**Figuelia Ya'Sin (Full-Stack Developer):**
+**Figuelia Ya'Sin (Database Developer):**
 
-- Implement secure token storage solution
-- Create database migration and seed scripts
-- Integrate frontend with authentication APIs
-- Implement protected route navigation guards
-- Total estimated hours: 24
+- Design and implement users table with constraints
+- Support team with database-related tasks
+- Total estimated hours: 4
 
 ### Success Criteria:
 

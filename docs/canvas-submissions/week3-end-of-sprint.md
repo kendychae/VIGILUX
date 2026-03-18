@@ -2,7 +2,7 @@
 
 **Sprint:** Week 3 (W03 Sprint 1)  
 **Name:** Kendahl Chae Bingham (Team Lead)  
-**Date:** March 16, 2026
+**Date:** March 18, 2026
 
 ---
 
@@ -10,7 +10,7 @@
 
 Enter the link to the most recent commit you have created for this sprint.
 
-1. https://github.com/kendychae/i-SPY/commit/[latest-week3-commit-hash]
+1. https://github.com/kendychae/i-SPY/commits/kendahlbingham
 
 ---
 
@@ -18,15 +18,20 @@ Enter the link to the most recent commit you have created for this sprint.
 
 Report on the tasks for which you were the lead person:
 
-| Task Name                             | Estimated Hours | Hours Worked | Percent Complete | Is this blocked by something outside of your control? If so, describe. |
-| ------------------------------------- | --------------- | ------------ | ---------------- | ---------------------------------------------------------------------- |
-| Design authentication flow            | 6               | 6.5          | 100%             | No                                                                     |
-| Coordinate team implementation        | 3               | 4            | 100%             | No                                                                     |
-| Database schema review                | 2               | 2            | 100%             | No                                                                     |
-| Design app navigation flow            | 3               | 3.5          | 100%             | No                                                                     |
-| Sprint planning and team coordination | 2               | 3            | 100%             | No                                                                     |
+| Task Name                                 | Estimated Hours | Hours Worked | Percent Complete | Is this blocked by something outside of your control? If so, describe. |
+| ----------------------------------------- | --------------- | ------------ | ---------------- | ---------------------------------------------------------------------- |
+| Design authentication flow                | 6               | 6.5          | 100%             | No                                                                     |
+| Secure token storage implementation       | 5               | 5            | 100%             | No                                                                     |
+| Integrate login API with frontend         | 5               | 6            | 100%             | No                                                                     |
+| Set up React Navigation                   | 6               | 7            | 100%             | No                                                                     |
+| Create placeholder screens                | 5               | 5            | 100%             | No                                                                     |
+| Design app navigation flow                | 3               | 3            | 100%             | No                                                                     |
+| Implement protected route guards          | 4               | 5            | 100%             | No                                                                     |
+| Add navigation animations and transitions | 3               | 4            | 100%             | No                                                                     |
+| Database schema review                    | 2               | 2.5          | 100%             | No                                                                     |
+| Create database migration scripts         | 4               | 5            | 100%             | No                                                                     |
 
-**Total Hours:** Estimated: 16 | Actual: 19
+**Total Hours:** Estimated: 43 | Actual: 49
 
 ---
 
@@ -67,7 +72,7 @@ Report on the tasks for which you were the lead person:
 ### Team Performance:
 
 - All team members completed their assigned tasks
-- 100% attendance at daily standups
+- 100% attendance at daily standups and final sprint meeting (March 18)
 - Strong collaboration and communication
 - Total team hours: 82 (planned: 82)
 
