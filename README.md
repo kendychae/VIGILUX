@@ -114,6 +114,14 @@ iSPY addresses these challenges by creating a seamless, secure, and efficient re
 
 ## 🚀 Getting Started
 
+> **⚡ Quick Demo:** Want to test the app immediately? Open `demo.html` in your browser after starting the backend server. This provides a web-based demo of the authentication system while we resolve some React Native dependency issues.
+>
+> **Steps:**
+>
+> 1. Start backend: `cd backend && npm run dev`
+> 2. Open `demo.html` in your browser
+> 3. Login with: `admin@ispy.app` / `Admin@123`
+
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -121,7 +129,7 @@ Before you begin, ensure you have the following installed:
 - **Node.js** (v18 or higher)
 - **npm** or **yarn**
 - **PostgreSQL** (v14 or higher)
-- **Expo CLI** (`npm install -g expo-cli`)
+- **Expo CLI** (`npm install -g expo-cli`) _(optional for now, using demo)_
 - **Git**
 
 ### Installation

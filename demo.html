@@ -180,23 +180,25 @@
 
                 const data = await response.json();
 
-                if (response.ok) {
-                    accessToken = data.accessToken;
+                if (response.ok && data.success) {
+                    accessToken = data.data.tokens.accessToken;
                     document.getElementById('loginForm').style.display = 'none';
                     document.getElementById('userDashboard').style.display = 'block';
                     
                     document.getElementById('userInfo').innerHTML = `
-                        <div><strong>User ID:</strong> ${data.user.id}</div>
-                        <div><strong>Name:</strong> ${data.user.firstName} ${data.user.lastName}</div>
-                        <div><strong>Email:</strong> ${data.user.email}</div>
-                        <div><strong>Role:</strong> ${data.user.role}</div>
-                        <div><strong>Phone:</strong> ${data.user.phoneNumber || 'Not set'}</div>
+                        <div><strong>User ID:</strong> ${data.data.user.id}</div>
+                        <div><strong>Name:</strong> ${data.data.user.firstName} ${data.data.user.lastName}</div>
+                        <div><strong>Email:</strong> ${data.data.user.email}</div>
+                        <div><strong>Role:</strong> ${data.data.user.userType}</div>
+                        <div><strong>Phone:</strong> ${data.data.user.phoneNumber || 'Not set'}</div>
                         <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
                             <strong>Access Token:</strong> ${accessToken.substring(0, 30)}...
                         </div>
                     `;
+                    successDiv.textContent = data.message || 'Login successful!';
+                    successDiv.style.display = 'block';
                 } else {
-                    errorDiv.textContent = data.error || 'Login failed';
+                    errorDiv.textContent = data.message || 'Login failed';
                     errorDiv.style.display = 'block';
                 }
             } catch (error) {
