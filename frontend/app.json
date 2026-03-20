@@ -2,6 +2,7 @@
   "expo": {
     "name": "iSPY",
     "slug": "ispy-app",
+    "owner": "kendychae",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -16,7 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.ispy.app",
       "config": {
-        "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY_HERE"
+        "googleMapsApiKey": "AIzaSyA3Sq_5bbCf6pgPq_PJWCluk6oE-H8xUy8"
       }
     },
     "android": {
@@ -34,7 +35,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_API_KEY_HERE"
+          "apiKey": "AIzaSyDvQ1s4kFtp-auJGuKvbcyKNHWW6Efm3iM"
         }
       }
     },
@@ -56,7 +57,9 @@
         }
       ],
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      "expo-dev-client"
     ]
   }
 }
