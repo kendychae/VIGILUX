@@ -14,7 +14,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ispy.app"
+      "bundleIdentifier": "com.ispy.app",
+      "config": {
+        "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY_HERE"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,10 +26,17 @@
       "package": "com.ispy.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_API_KEY_HERE"
+        }
+      }
     },
     "web": {
       "bundler": "metro"
@@ -36,6 +46,13 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow iSPY to use your location to tag incident reports."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow iSPY to access your photos to attach evidence to reports.",
+          "cameraPermission": "Allow iSPY to take photos for incident reports."
         }
       ],
       "expo-asset",

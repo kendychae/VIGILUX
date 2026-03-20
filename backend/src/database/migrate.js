@@ -31,6 +31,14 @@ async function runMigrations() {
 
     console.log('✓ Database schema created successfully');
 
+    // Create spatial index for geospatial queries
+    console.log('Creating spatial indexes...');
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_reports_location 
+      ON reports (latitude, longitude);
+    `);
+    console.log('✓ Spatial indexes created successfully');
+
     // Insert default admin user (optional)
     const bcrypt = require('bcrypt');
     const defaultPassword = await bcrypt.hash('Admin@123', 12);

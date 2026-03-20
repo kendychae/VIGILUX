@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,95 +8,566 @@ import {
   ScrollView,
   Alert,
   SafeAreaView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
+import api from '../services/api';
+import MediaPreview from '../components/MediaPreview';
+import { showImagePickerOptions, validateImages } from '../services/imagePicker';
+import { compressAndUpload, cleanupCompressedImages } from '../services/imageCompression';
 
 const ReportScreen = ({ navigation }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [incidentType, setIncidentType] = useState('');
+  const [priority, setPriority] = useState('medium');
+  const [location, setLocation] = useState(null);
+  const [address, setAddress] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({ stage: '', percentage: 0 });
 
   const incidentTypes = [
-    { id: 'theft', label: 'Theft', icon: '💼' },
-    { id: 'vandalism', label: 'Vandalism', icon: '🔨' },
-    { id: 'suspicious', label: 'Suspicious Activity', icon: '👀' },
-    { id: 'noise', label: 'Noise Complaint', icon: '🔊' },
-    { id: 'traffic', label: 'Traffic Issue', icon: '🚗' },
-    { id: 'other', label: 'Other', icon: '📌' },
+    { id: 'theft', label: 'Theft', icon: '🚨', description: 'Stolen items or break-ins' },
+    { id: 'vandalism', label: 'Vandalism', icon: '🔨', description: 'Property damage' },
+    { id: 'assault', label: 'Assault', icon: '⚠️', description: 'Physical violence' },
+    { id: 'suspicious_activity', label: 'Suspicious', icon: '👀', description: 'Unusual behavior' },
+    { id: 'traffic_violation', label: 'Traffic', icon: '🚗', description: 'Reckless driving' },
+    { id: 'noise_complaint', label: 'Noise', icon: '🔊', description: 'Loud disturbances' },
+    { id: 'fire', label: 'Fire', icon: '🔥', description: 'Fire or smoke' },
+    { id: 'medical_emergency', label: 'Medical', icon: '🚑', description: 'Medical emergency' },
+    { id: 'other', label: 'Other', icon: '📌', description: 'Other incidents' },
   ];
 
-  const handleSubmit = () => {
-    if (!title.trim() || !description.trim() || !incidentType) {
-      Alert.alert('Error', 'Please fill in all fields');
+  const priorityLevels = [
+    { id: 'low', label: 'Low', color: '#4CAF50' },
+    { id: 'medium', label: 'Medium', color: '#FFC107' },
+    { id: 'high', label: 'High', color: '#FF9800' },
+    { id: 'urgent', label: 'Urgent', color: '#F44336' },
+  ];
+
+  useEffect(() => {
+    getCurrentLocation();
+  }, []);
+
+  const getCurrentLocation = async () => {
+    try {
+      setLocationLoading(true);
+
+      // Request location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Location permission is required to submit a report. Please enable location services in your device settings.',
+          [{ text: 'OK' }]
+        );
+        setLocationLoading(false);
+        return;
+      }
+
+      // Get current location
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      setLocation({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+      });
+
+      // Reverse geocode to get address
+      const addresses = await Location.reverseGeocodeAsync({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+      });
+
+      if (addresses && addresses.length > 0) {
+        const addr = addresses[0];
+        const formattedAddress = `${addr.street || ''}, ${addr.city || ''}, ${addr.region || ''} ${addr.postalCode || ''}`.trim();
+        setAddress(formattedAddress);
+      }
+
+      setLocationLoading(false);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      setLocationLoading(false);
+      Alert.alert(
+        'Location Error',
+        'Could not retrieve your location. Please enter the address manually or try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleAddImages = async () => {
+    // Check if already at max limit
+    if (selectedImages.length >= 5) {
+      Alert.alert('Maximum Reached', 'You can only add up to 5 photos per report.');
       return;
     }
 
-    // Here you would call the API to submit the report
+    try {
+      // Show picker options (camera or gallery)
+      const pickedImages = await showImagePickerOptions({
+        allowsMultipleSelection: true,
+        selectionLimit: 5 - selectedImages.length,
+        quality: 0.9,
+      });
+
+      if (pickedImages && pickedImages.length > 0) {
+        // Validate images
+        const validation = validateImages(pickedImages);
+        if (!validation.valid) {
+          Alert.alert('Invalid Images', validation.errors.join('\n'));
+          return;
+        }
+
+        // Add to selected images
+        setSelectedImages(prev => [...prev, ...pickedImages]);
+      }
+    } catch (error) {
+      console.error('Error adding images:', error);
+      Alert.alert('Error', 'Failed to add images. Please try again.');
+    }
+  };
+
+  const handleDeleteImage = (index) => {
     Alert.alert(
-      'Success',
-      'Your report has been submitted successfully',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
+      'Delete Photo',
+      'Are you sure you want to remove this photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setSelectedImages(prev => prev.filter((_, i) => i !== index));
+          },
+        },
+      ]
+    );
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Title validation
+    if (!title.trim()) {
+      newErrors.title = 'Title is required';
+    } else if (title.trim().length < 3) {
+      newErrors.title = 'Title must be at least 3 characters';
+    } else if (title.trim().length > 255) {
+      newErrors.title = 'Title must not exceed 255 characters';
+    }
+
+    // Description validation
+    if (!description.trim()) {
+      newErrors.description = 'Description is required';
+    } else if (description.trim().length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
+    } else if (description.trim().length > 5000) {
+      newErrors.description = 'Description must not exceed 5000 characters';
+    }
+
+    // Incident type validation
+    if (!incidentType) {
+      newErrors.incidentType = 'Please select an incident type';
+    }
+
+    // Location validation
+    if (!location) {
+      newErrors.location = 'Location is required. Please enable location services.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    // Validate form
+    if (!validateForm()) {
+      Alert.alert('Validation Error', 'Please correct the errors and try again.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Prepare report data
+      const reportData = {
+        title: title.trim(),
+        description: description.trim(),
+        incident_type: incidentType,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        address: address.trim() || null,
+        incident_date: new Date().toISOString(),
+        priority: priority,
+      };
+
+      // Submit report to API
+      const response = await api.post('/reports', reportData);
+
+      if (response.data.success) {
+        const reportId = response.data.data.id;
+
+        // Upload images if any are selected
+        if (selectedImages.length > 0) {
+          try {
+            setUploadProgress({ stage: 'compress', percentage: 0 });
+
+            // Get auth token for upload
+            const token = await AsyncStorage.getItem('authToken');
+            const uploadUrl = `${api.defaults.baseURL}/reports/${reportId}/media`;
+
+            // Compress and upload images
+            const uploadResult = await compressAndUpload(
+              selectedImages,
+              uploadUrl,
+              {
+                compression: { preset: 'upload' },
+                upload: {
+                  fieldName: 'media',
+                  headers: { Authorization: `Bearer ${token}` },
+                  maxRetries: 3,
+                },
+              },
+              (progress) => {
+                setUploadProgress(progress);
+              }
+            );
+
+            // Clean up compressed images
+            await cleanupCompressedImages(uploadResult.compressed);
+
+            // Show warning if some uploads failed
+            if (uploadResult.failureCount > 0) {
+              Alert.alert(
+                'Partial Upload',
+                `Report submitted, but ${uploadResult.failureCount} photo(s) failed to upload. You can add them later.`,
+                [
+                  {
+                    text: 'View Report',
+                    onPress: () => navigation.navigate('Home'),
+                  },
+                ]
+              );
+              setLoading(false);
+              return;
+            }
+          } catch (uploadError) {
+            console.error('Error uploading images:', uploadError);
+            Alert.alert(
+              'Upload Warning',
+              'Your report was submitted successfully, but photos could not be uploaded. You can add them later.',
+              [
+                {
+                  text: 'View Report',
+                  onPress: () => navigation.navigate('Home'),
+                },
+              ]
+            );
+            setLoading(false);
+            return;
+          }
+        }
+
+        setLoading(false);
+        setUploadProgress({ stage: '', percentage: 0 });
+
+        Alert.alert(
+          'Success! 🎉',
+          'Your report has been submitted successfully. Our team will review it shortly.',
+          [
+            {
+              text: 'View My Reports',
+              onPress: () => navigation.navigate('Home'),
+            },
+            {
+              text: 'Submit Another',
+              onPress: () => resetForm(),
+              style: 'cancel',
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      setLoading(false);
+      setUploadProgress({ stage: '', percentage: 0 });
+      console.error('Error submitting report:', error);
+
+      let errorMessage = 'An error occurred while submitting your report. Please try again.';
+      
+      if (error.response?.data?.details) {
+        const validationErrors = error.response.data.details;
+        errorMessage = validationErrors.map(e => e.message).join('\n');
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      Alert.alert('Submission Error', errorMessage);
+    }
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setIncidentType('');
+    setPriority('medium');
+    setErrors({});
+    setSelectedImages([]);
+    getCurrentLocation();
+  };
+
+  const renderError = (field) => {
+    if (errors[field]) {
+      return <Text style={styles.errorText}>⚠️ {errors[field]}</Text>;
+    }
+    return null;
+  };
+
+  const renderCharacterCount = (current, max) => {
+    const isNearLimit = current > max * 0.8;
+    return (
+      <Text style={[styles.charCount, isNearLimit && styles.charCountWarning]}>
+        {current}/{max}
+      </Text>
     );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.header}>Submit a Report</Text>
-        <Text style={styles.subheader}>Help keep your neighborhood safe</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Submit a Report</Text>
+            <Text style={styles.headerSubtitle}>Help keep your community safe</Text>
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Incident Type</Text>
-          <View style={styles.typeGrid}>
-            {incidentTypes.map((type) => (
-              <TouchableOpacity
-                key={type.id}
-                style={[
-                  styles.typeCard,
-                  incidentType === type.id && styles.typeCardSelected,
-                ]}
-                onPress={() => setIncidentType(type.id)}
+          {/* Location Section */}
+          <View style={styles.section}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>📍 Location</Text>
+              {locationLoading && (
+                <ActivityIndicator size="small" color="#2196F3" />
+              )}
+            </View>
+            
+            {location ? (
+              <View style={styles.locationCard}>
+                <Text style={styles.locationText}>
+                  {address || 'Location acquired'}
+                </Text>
+                <TouchableOpacity onPress={getCurrentLocation}>
+                  <Text style={styles.refreshText}>🔄 Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.locationButton} 
+                onPress={getCurrentLocation}
+                disabled={locationLoading}
               >
-                <Text style={styles.typeIcon}>{type.icon}</Text>
-                <Text style={[
-                  styles.typeLabel,
-                  incidentType === type.id && styles.typeLabelSelected,
-                ]}>
-                  {type.label}
+                <Text style={styles.locationButtonText}>
+                  {locationLoading ? 'Getting location...' : 'Get Current Location'}
                 </Text>
               </TouchableOpacity>
-            ))}
+            )}
+            {renderError('location')}
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Title</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Brief summary of the incident"
-            placeholderTextColor="#999"
-            value={title}
-            onChangeText={setTitle}
-          />
-        </View>
+          {/* Incident Type Section */}
+          <View style={styles.section}>
+            <Text style={styles.label}>🚨 Incident Type *</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.typeScroll}
+            >
+              {incidentTypes.map((type) => (
+                <TouchableOpacity
+                  key={type.id}
+                  style={[
+                    styles.typeCard,
+                    incidentType === type.id && styles.typeCardSelected,
+                  ]}
+                  onPress={() => {
+                    setIncidentType(type.id);
+                    setErrors({ ...errors, incidentType: null });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.typeIcon}>{type.icon}</Text>
+                  <Text style={[
+                    styles.typeLabel,
+                    incidentType === type.id && styles.typeLabelSelected,
+                  ]}>
+                    {type.label}
+                  </Text>
+                  <Text style={styles.typeDescription}>{type.description}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {renderError('incidentType')}
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Provide details about what happened..."
-            placeholderTextColor="#999"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-          />
-        </View>
+          {/* Priority Section */}
+          <View style={styles.section}>
+            <Text style={styles.label}>⚡ Priority Level</Text>
+            <View style={styles.priorityRow}>
+              {priorityLevels.map((level) => (
+                <TouchableOpacity
+                  key={level.id}
+                  style={[
+                    styles.priorityButton,
+                    priority === level.id && { 
+                      backgroundColor: level.color,
+                      borderColor: level.color,
+                    },
+                  ]}
+                  onPress={() => setPriority(level.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.priorityText,
+                    priority === level.id && styles.priorityTextSelected,
+                  ]}>
+                    {level.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>Submit Report</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          {/* Title Section */}
+          <View style={styles.section}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>📝 Title *</Text>
+              {renderCharacterCount(title.length, 255)}
+            </View>
+            <TextInput
+              style={[styles.input, errors.title && styles.inputError]}
+              placeholder="Brief summary (e.g., Suspicious vehicle in driveway)"
+              placeholderTextColor="#999"
+              value={title}
+              onChangeText={(text) => {
+                setTitle(text);
+                setErrors({ ...errors, title: null });
+              }}
+              maxLength={255}
+            />
+            {renderError('title')}
+          </View>
+
+          {/* Description Section */}
+          <View style={styles.section}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>📄 Description *</Text>
+              {renderCharacterCount(description.length, 5000)}
+            </View>
+            <TextInput
+              style={[styles.input, styles.textArea, errors.description && styles.inputError]}
+              placeholder="Provide detailed information about the incident, including what happened, when, and any other relevant details..."
+              placeholderTextColor="#999"
+              value={description}
+              onChangeText={(text) => {
+                setDescription(text);
+                setErrors({ ...errors, description: null });
+              }}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              maxLength={5000}
+            />
+            {renderError('description')}
+          </View>
+
+          {/* Media Section */}
+          <View style={styles.section}>
+            <Text style={styles.label}>📷 Photos (Optional)</Text>
+            <Text style={styles.helperText}>Add up to 5 photos to support your report</Text>
+            
+            {/* Show selected images */}
+            {selectedImages.length > 0 && (
+              <MediaPreview 
+                media={selectedImages}
+                onDelete={handleDeleteImage}
+                editable={!loading}
+                maxItems={5}
+              />
+            )}
+
+            {/* Add photos button */}
+            {selectedImages.length < 5 && (
+              <TouchableOpacity
+                style={styles.addPhotoButton}
+                onPress={handleAddImages}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.addPhotoIcon}>📸</Text>
+                <Text style={styles.addPhotoText}>
+                  {selectedImages.length === 0 ? 'Add Photos' : 'Add More Photos'}
+                </Text>
+                <Text style={styles.addPhotoSubtext}>
+                  {5 - selectedImages.length} remaining
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Upload progress */}
+            {uploadProgress.percentage > 0 && (
+              <View style={styles.uploadProgress}>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${uploadProgress.percentage}%` }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.progressText}>
+                  {uploadProgress.stage === 'compress' ? '📦 Compressing...' : '☁️ Uploading...'}
+                  {' '}{uploadProgress.percentage}%
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity 
+            style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
+            onPress={handleSubmit}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitButtonText}>📤 Submit Report</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              * Required fields • All reports are reviewed within 24 hours
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -104,21 +575,31 @@ const ReportScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F5F7FA',
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
   content: {
     padding: 20,
+    paddingBottom: 40,
   },
   header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  subheader: {
-    fontSize: 16,
-    color: '#666',
     marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: '400',
   },
   section: {
     marginBottom: 24,
@@ -126,65 +607,225 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#374151',
     marginBottom: 12,
   },
-  typeGrid: {
+  labelRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
-  },
-  typeCard: {
-    width: '31%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    margin: 6,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
+    marginBottom: 12,
   },
-  typeCardSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E3F2FD',
-  },
-  typeIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  typeLabel: {
+  charCount: {
     fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
+    color: '#9CA3AF',
   },
-  typeLabelSelected: {
-    color: '#007AFF',
+  charCountWarning: {
+    color: '#F59E0B',
     fontWeight: '600',
   },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
+  locationCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    fontSize: 16,
-    color: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  locationText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
+    marginRight: 12,
+  },
+  refreshText: {
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '600',
+  },
+  locationButton: {
+    backgroundColor: '#2196F3',
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+  },
+  locationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  typeScroll: {
+    marginHorizontal: -4,
+  },
+  typeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    minWidth: 110,
+  },
+  typeCardSelected: {
+    borderColor: '#2196F3',
+    backgroundColor: '#EFF6FF',
+  },
+  typeIcon: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  typeLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  typeLabelSelected: {
+    color: '#2196F3',
+    fontWeight: '700',
+  },
+  typeDescription: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  priorityButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  priorityText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  priorityTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 15,
+    color: '#1F2937',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    borderWidth: 2,
   },
   textArea: {
-    minHeight: 120,
+    minHeight: 140,
     paddingTop: 16,
   },
+  errorText: {
+    fontSize: 13,
+    color: '#EF4444',
+    marginTop: 6,
+    fontWeight: '500',
+  },
   submitButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#2196F3',
     borderRadius: 12,
     padding: 18,
     alignItems: 'center',
     marginTop: 8,
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  footer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  helperText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  addPhotoButton: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  addPhotoIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  addPhotoText: {
+    fontSize: 15,
     fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  addPhotoSubtext: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  uploadProgress: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#2196F3',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 13,
+    color: '#1E40AF',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
