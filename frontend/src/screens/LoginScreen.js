@@ -7,7 +7,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { authService } from '../services/authService';
@@ -17,11 +16,13 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleLogin = async () => {
-    // Validation
+    setErrorMsg('');
+
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password');
+      setErrorMsg('Please enter both email and password');
       return;
     }
 
@@ -32,13 +33,12 @@ const LoginScreen = ({ navigation }) => {
 
       if (result.success) {
         // Auth status will be detected automatically by the polling in App.js
-        // Just show success message
         console.log('Login successful!', result.user);
       } else {
-        Alert.alert('Login Failed', result.message || 'Invalid credentials');
+        setErrorMsg(result.message || 'Invalid credentials');
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      setErrorMsg('Unable to connect to server. Please try again.');
       console.error('Login error:', error);
     } finally {
       setLoading(false);
@@ -108,6 +108,12 @@ const LoginScreen = ({ navigation }) => {
           >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
+
+          {errorMsg ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>⚠️  {errorMsg}</Text>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
@@ -258,6 +264,19 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  errorBanner: {
+    backgroundColor: '#FFF0F0',
+    borderWidth: 1,
+    borderColor: '#FFCCCC',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorBannerText: {
+    color: '#CC0000',
+    fontSize: 14,
+    textAlign: 'center',
   },
   footer: {
     marginTop: 32,

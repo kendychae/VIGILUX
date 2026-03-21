@@ -19,4 +19,25 @@ config.resolver.nodeModulesPaths = [
 // Ensure Metro uses root workspace node_modules properly
 config.resolver.disableHierarchicalLookup = false;
 
+// Fallback: if AppEntry.js still runs (e.g. as the Metro bundle entry),
+// redirect its `../../App` import to the correct frontend App component.
+// Use normalized slashes for Windows/Mac/Linux compatibility.
+const originalResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const originNorm = context.originModulePath.replace(/\\/g, '/');
+  if (
+    moduleName === '../../App' &&
+    originNorm.includes('node_modules/expo/AppEntry')
+  ) {
+    return {
+      filePath: path.resolve(projectRoot, 'src', 'App.js'),
+      type: 'sourceFile',
+    };
+  }
+  if (originalResolveRequest) {
+    return originalResolveRequest(context, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;

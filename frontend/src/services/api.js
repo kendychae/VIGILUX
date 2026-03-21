@@ -4,11 +4,29 @@ import Constants from 'expo-constants';
 import { getAccessToken, getRefreshToken, storeAccessToken, storeRefreshToken, clearAuthData } from '../utils/secureStorage';
 
 // EXPO_PUBLIC_API_URL is resolved at build time by Expo (SDK 49+)
-// Falls back to app.config.js extra.apiUrl, then to localhost for dev
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ||
-  Constants.expoConfig?.extra?.apiUrl ||
-  'http://localhost:3000/api/v1';
+// In Expo Go dev mode, derive the backend host from the Metro dev server host
+// so the phone automatically reaches the right IP without manual config.
+function getApiBaseUrl() {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+
+  // In Expo Go, Constants.expoConfig.hostUri is e.g. "192.168.0.249:8081"
+  // Extract just the IP and use port 3000 for the backend
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    Constants.manifest?.debuggerHost ||
+    Constants.manifest2?.extra?.expoClient?.hostUri;
+
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return `http://${host}:3000/api/v1`;
+    }
+  }
+
+  return 'http://localhost:3000/api/v1';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 if (__DEV__) {
   console.log('[iSPY] API Base URL:', API_BASE_URL);
