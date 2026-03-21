@@ -1,8 +1,18 @@
 // API configuration and axios instance
 import axios from 'axios';
+import Constants from 'expo-constants';
 import { getAccessToken, getRefreshToken, storeAccessToken, storeRefreshToken, clearAuthData } from '../utils/secureStorage';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api/v1';
+// EXPO_PUBLIC_API_URL is resolved at build time by Expo (SDK 49+)
+// Falls back to app.config.js extra.apiUrl, then to localhost for dev
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  Constants.expoConfig?.extra?.apiUrl ||
+  'http://localhost:3000/api/v1';
+
+if (__DEV__) {
+  console.log('[iSPY] API Base URL:', API_BASE_URL);
+}
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

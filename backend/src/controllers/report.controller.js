@@ -19,7 +19,7 @@ const createReport = async (req, res) => {
       priority = 'medium'
     } = req.body;
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Validate required fields
     const errors = [];

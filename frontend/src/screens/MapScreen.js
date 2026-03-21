@@ -19,6 +19,7 @@ const LONGITUDE_DELTA = LATITUDE_DELTA * (width / height);
 
 const MapScreen = ({ navigation }) => {
   const mapRef = useRef(null);
+  const locationSubscriptionRef = useRef(null);
   const [location, setLocation] = useState(null);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,11 @@ const MapScreen = ({ navigation }) => {
 
   useEffect(() => {
     initializeMap();
+    return () => {
+      if (locationSubscriptionRef.current) {
+        locationSubscriptionRef.current.remove();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -89,7 +95,7 @@ const MapScreen = ({ navigation }) => {
       setLoading(false);
 
       // Watch location for real-time tracking
-      Location.watchPositionAsync(
+      const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
           timeInterval: 5000, // Update every 5 seconds
@@ -110,6 +116,7 @@ const MapScreen = ({ navigation }) => {
           }
         }
       );
+      locationSubscriptionRef.current = subscription;
 
     } catch (error) {
       console.error('Error initializing map:', error);
@@ -613,9 +620,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-});
-
-export default MapScreen;
   locationLabel: {
     fontSize: 16,
     fontWeight: '600',

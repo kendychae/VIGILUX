@@ -6,7 +6,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#667eea"
     },
@@ -16,15 +18,26 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ispy.app",
+      "buildNumber": "1",
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      },
       "config": {
-        "googleMapsApiKey": "AIzaSyA3Sq_5bbCf6pgPq_PJWCluk6oE-H8xUy8"
+        "googleMapsApiKey": "$GOOGLE_MAPS_API_KEY_IOS"
       }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#667eea"
       },
       "package": "com.ispy.app",
+      "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -35,7 +48,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDvQ1s4kFtp-auJGuKvbcyKNHWW6Efm3iM"
+          "apiKey": "$GOOGLE_MAPS_API_KEY_ANDROID"
         }
       }
     },
@@ -58,8 +71,13 @@
       ],
       "expo-asset",
       "expo-font",
-      "expo-secure-store",
-      "expo-dev-client"
-    ]
+      "expo-secure-store"
+    ],
+    "extra": {
+      "apiUrl": "$API_URL",
+      "eas": {
+        "projectId": "ispy-app"
+      }
+    }
   }
 }
