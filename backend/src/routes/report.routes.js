@@ -1,3 +1,36 @@
+// Get all media for a report
+router.get('/media/report/:reportId', authenticate, async (req, res) => {
+  const { reportId } = req.params;
+  try {
+    const media = await mediaController.getMediaByReport(reportId);
+    res.json({ media });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: 'Failed to retrieve media', details: err.message });
+  }
+});
+
+// Get a single media record by mediaId
+router.get('/media/:mediaId', authenticate, async (req, res) => {
+  const { mediaId } = req.params;
+  try {
+    const { pool } = require('../config/database');
+    const client = await pool.connect();
+    const result = await client.query('SELECT * FROM media WHERE id = $1', [
+      mediaId,
+    ]);
+    client.release();
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Media not found' });
+    }
+    res.json({ media: result.rows[0] });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: 'Failed to retrieve media', details: err.message });
+  }
+});
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth.middleware');
@@ -5,6 +38,7 @@ const { authenticate } = require('../middleware/auth.middleware');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const mediaController = require('../controllers/media.controller');
 
 // Multer storage configuration
 const storage = multer.diskStorage({
@@ -35,19 +69,42 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Upload endpoint (authenticated)
-router.post('/upload', authenticate, upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
+// Upload endpoint (authenticated, links to report if reportId provided)
+router.post(
+  '/upload',
+  authenticate,
+  upload.single('file'),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const { reportId } = req.body;
+    let mediaRecord = null;
+    if (reportId) {
+      try {
+        mediaRecord = await mediaController.addMediaToReport(
+          reportId,
+          req.file.path.replace(/\\/g, '/').replace(/^.*\/uploads\//, ''),
+          req.file.mimetype,
+          req.file.size
+        );
+      } catch (err) {
+        return res.status(500).json({
+          error: 'Failed to link media to report',
+          details: err.message,
+        });
+      }
+    }
+    res.status(201).json({
+      message: 'File uploaded successfully',
+      filePath: req.file.path.replace(/\\/g, '/').replace(/^.*\/uploads\//, ''),
+      originalName: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      media: mediaRecord,
+    });
   }
-  res.status(201).json({
-    message: 'File uploaded successfully',
-    filePath: req.file.path.replace(/\\/g, '/').replace(/^.*\/uploads\//, ''),
-    originalName: req.file.originalname,
-    mimetype: req.file.mimetype,
-    size: req.file.size,
-  });
-});
+);
 
 // Serve files endpoint (authenticated)
 router.get('/file/:userId/:date/:type/:filename', authenticate, (req, res) => {
