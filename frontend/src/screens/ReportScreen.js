@@ -13,8 +13,8 @@ import {
   Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Location from 'expo-location';
 import api from '../services/api';
+import { getLocationWithAddress } from '../services/locationService';
 import MediaPreview from '../components/MediaPreview';
 import { showImagePickerOptions, validateImages } from '../services/imagePicker';
 import { compressAndUpload, cleanupCompressedImages } from '../services/imageCompression';
@@ -59,50 +59,14 @@ const ReportScreen = ({ navigation }) => {
     try {
       setLocationLoading(true);
 
-      // Request location permissions
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Location permission is required to submit a report. Please enable location services in your device settings.',
-          [{ text: 'OK' }]
-        );
-        setLocationLoading(false);
-        return;
+      const result = await getLocationWithAddress();
+
+      if (result) {
+        setLocation({ latitude: result.latitude, longitude: result.longitude });
+        if (result.address) setAddress(result.address);
       }
-
-      // Get current location
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      setLocation({
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude,
-      });
-
-      // Reverse geocode to get address
-      const addresses = await Location.reverseGeocodeAsync({
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude,
-      });
-
-      if (addresses && addresses.length > 0) {
-        const addr = addresses[0];
-        const formattedAddress = `${addr.street || ''}, ${addr.city || ''}, ${addr.region || ''} ${addr.postalCode || ''}`.trim();
-        setAddress(formattedAddress);
-      }
-
+    } finally {
       setLocationLoading(false);
-    } catch (error) {
-      console.error('Error getting location:', error);
-      setLocationLoading(false);
-      Alert.alert(
-        'Location Error',
-        'Could not retrieve your location. Please enter the address manually or try again.',
-        [{ text: 'OK' }]
-      );
     }
   };
 
