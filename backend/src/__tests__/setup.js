@@ -16,9 +16,9 @@ jest.setTimeout(10000);
 global.testUser = {
   email: 'test@example.com',
   password: 'Test@123',
-  first_name: 'Test',
-  last_name: 'User',
-  user_type: 'citizen'
+  firstName: 'Test',
+  lastName: 'User',
+  userType: 'citizen'
 };
 
 // Clean up after all tests

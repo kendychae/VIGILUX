@@ -1,6 +1,6 @@
 const request = require('supertest');
-const app = require('../../server');
-const db = require('../../config/database');
+const app = require('../server');
+const db = require('../config/database');
 
 describe('Report API Integration Tests', () => {
   let authToken;
@@ -31,7 +31,7 @@ describe('Report API Integration Tests', () => {
         password: 'Test@123'
       });
 
-    authToken = loginResponse.body.data.token;
+    authToken = loginResponse.body.data.tokens.accessToken;
   });
 
   // Cleanup
