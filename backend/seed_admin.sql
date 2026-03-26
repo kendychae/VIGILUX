@@ -1,0 +1,1 @@
+INSERT INTO users (email, password_hash, first_name, last_name, user_type, is_active, is_verified) VALUES ('admin@vigilux.app', '$2b$12$.YFYqbT51tL.aMuiB6/23e4IMS7/JA4XB.snV5iP2EjRVMyd..o4W', 'Admin', 'User', 'admin', true, true);

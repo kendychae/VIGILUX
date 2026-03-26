@@ -7,8 +7,9 @@ const monorepoRoot = path.resolve(projectRoot, '..');
 
 const config = getDefaultConfig(projectRoot);
 
-// Watch the monorepo root so Metro can resolve workspace packages
-config.watchFolders = [monorepoRoot];
+// Do NOT set watchFolders to the monorepo root — on Windows this causes Metro
+// to construct doubled-drive-letter paths like C:\c:\Projects\... which crash.
+// Metro finds root node_modules via hierarchical lookup (nodeModulesPaths below).
 
 // Tell Metro to also look in the monorepo root node_modules
 config.resolver.nodeModulesPaths = [
