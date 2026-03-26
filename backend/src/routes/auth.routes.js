@@ -72,6 +72,9 @@ router.post('/logout', authenticate, authController.logout);
 // GET /api/v1/auth/me
 router.get('/me', authenticate, authController.getCurrentUser);
 
+// DELETE /api/v1/auth/account
+router.delete('/account', authenticate, authController.deleteAccount);
+
 // POST /api/v1/auth/verify-email
 router.post('/verify-email', authController.verifyEmail);
 

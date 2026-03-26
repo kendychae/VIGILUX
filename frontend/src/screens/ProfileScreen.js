@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,19 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
+  Modal,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { authService } from '../services/authService';
-import { useContext } from 'react';
 import { AuthContext } from '../App';
 
 const ProfileScreen = ({ navigation }) => {
   const { setIsAuthenticated } = useContext(AuthContext);
   const [user, setUser] = React.useState(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   React.useEffect(() => {
     loadUser();
@@ -41,6 +46,45 @@ const ProfileScreen = ({ navigation }) => {
         },
       ]
     );
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      Alert.alert('Error', 'Please enter your password to confirm account deletion');
+      return;
+    }
+
+    setIsDeleting(true);
+    const result = await authService.deleteAccount(deletePassword);
+    setIsDeleting(false);
+
+    if (result.success) {
+      setDeleteModalVisible(false);
+      setDeletePassword('');
+      Alert.alert(
+        'Account Deleted',
+        'Your account and all associated data have been permanently deleted.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setIsAuthenticated(false);
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert('Deletion Failed', result.message || 'Failed to delete account');
+    }
+  };
+
+  const showDeleteConfirmation = () => {
+    setDeleteModalVisible(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalVisible(false);
+    setDeletePassword('');
   };
 
   return (
@@ -109,8 +153,60 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.deleteButton} onPress={showDeleteConfirmation}>
+          <Text style={styles.deleteText}>Delete Account</Text>
+        </TouchableOpacity>
+
         <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeDeleteModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Delete Account?</Text>
+            <Text style={styles.modalMessage}>
+              This action cannot be undone. All your data will be permanently deleted. Please enter your password to confirm.
+            </Text>
+            
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Enter your password"
+              secureTextEntry={true}
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              editable={!isDeleting}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={closeDeleteModal}
+                disabled={isDeleting}
+              >
+                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButtonDelete, isDeleting && styles.modalButtonDisabled]}
+                onPress={handleDeleteAccount}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalButtonTextDelete}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -211,11 +307,91 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  deleteButton: {
+    backgroundColor: '#FFE5E5',
+    borderWidth: 2,
+    borderColor: '#d9534f',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  deleteText: {
+    color: '#d9534f',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   version: {
     textAlign: 'center',
     color: '#999',
     fontSize: 12,
     marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#d9534f',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  passwordInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonTextCancel: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonDelete: {
+    flex: 1,
+    backgroundColor: '#d9534f',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonTextDelete: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonDisabled: {
+    opacity: 0.6,
   },
 });
 

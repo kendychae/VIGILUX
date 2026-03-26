@@ -339,6 +339,81 @@ exports.getCurrentUser = async (req, res) => {
 };
 
 /**
+ * Delete user account
+ * DELETE /api/v1/auth/account
+ * Requires password confirmation for security
+ */
+exports.deleteAccount = async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { password } = req.body;
+    const userId = req.user.userId;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required to delete account',
+      });
+    }
+
+    // Get user and verify password
+    const result = await client.query(
+      'SELECT id, password_hash FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    const user = result.rows[0];
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid password',
+      });
+    }
+
+    // Begin transaction - delete user and all related data
+    await client.query('BEGIN');
+
+    // Delete all user's reports and related data
+    await client.query('DELETE FROM media WHERE report_id IN (SELECT id FROM reports WHERE user_id = $1)', [userId]);
+    await client.query('DELETE FROM report_updates WHERE report_id IN (SELECT id FROM reports WHERE user_id = $1)', [userId]);
+    await client.query('DELETE FROM reports WHERE user_id = $1', [userId]);
+    
+    // Delete notifications
+    await client.query('DELETE FROM notifications WHERE user_id = $1', [userId]);
+    
+    // Delete user account
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    await client.query('COMMIT');
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Account deletion error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting account',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  } finally {
+    client.release();
+  }
+};
+
+/**
  * Verify email token
  * POST /api/v1/auth/verify-email
  */

@@ -96,6 +96,30 @@ export const authService = {
   getCachedUser: async () => {
     return await getUserData();
   },
+
+  /**
+   * Delete user account
+   */
+  deleteAccount: async (password) => {
+    try {
+      const response = await apiClient.delete('/auth/account', {
+        data: { password },
+      });
+
+      if (response.data.success) {
+        // Clear auth data on success
+        await clearAuthData();
+        return { success: true };
+      }
+
+      return { success: false, message: response.data.message };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to delete account',
+      };
+    }
+  },
 };
 
 export default authService;
