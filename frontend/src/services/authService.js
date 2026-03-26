@@ -120,6 +120,35 @@ export const authService = {
       };
     }
   },
+
+  /**
+   * Update user profile
+   */
+  updateProfile: async (profileData) => {
+    try {
+      const response = await apiClient.patch('/auth/profile', profileData);
+
+      if (response.data.success) {
+        const { user } = response.data.data;
+        // Update cached user data
+        await storeAuthData(
+          {
+            accessToken: await getAccessToken(),
+            refreshToken: await getRefreshToken(),
+          },
+          user
+        );
+        return { success: true, user };
+      }
+
+      return { success: false, message: response.data.message };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update profile',
+      };
+    }
+  },
 };
 
 export default authService;

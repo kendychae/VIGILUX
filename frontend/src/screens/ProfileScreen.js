@@ -11,6 +11,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { authService } from '../services/authService';
 import { AuthContext } from '../App';
 
@@ -25,9 +26,20 @@ const ProfileScreen = ({ navigation }) => {
     loadUser();
   }, []);
 
+  // Reload user data when the screen comes into focus (e.g., after editing profile)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUser();
+    }, [])
+  );
+
   const loadUser = async () => {
     const userData = await authService.getCachedUser();
     setUser(userData);
+  };
+
+  const handleEditProfile = () => {
+    navigation.navigate('EditProfile');
   };
 
   const handleLogout = async () => {
@@ -108,7 +120,7 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleEditProfile}>
             <Text style={styles.menuIcon}>👤</Text>
             <Text style={styles.menuText}>Edit Profile</Text>
             <Text style={styles.menuArrow}>›</Text>

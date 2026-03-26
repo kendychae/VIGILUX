@@ -72,6 +72,9 @@ router.post('/logout', authenticate, authController.logout);
 // GET /api/v1/auth/me
 router.get('/me', authenticate, authController.getCurrentUser);
 
+// PATCH /api/v1/auth/profile
+router.patch('/profile', authenticate, authController.updateProfile);
+
 // DELETE /api/v1/auth/account
 router.delete('/account', authenticate, authController.deleteAccount);
 

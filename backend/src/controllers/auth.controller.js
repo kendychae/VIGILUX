@@ -339,6 +339,108 @@ exports.getCurrentUser = async (req, res) => {
 };
 
 /**
+ * Update user profile
+ * PATCH /api/v1/auth/profile
+ */
+exports.updateProfile = async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { firstName, lastName, phoneNumber } = req.body;
+    const userId = req.user.userId;
+
+    // Validate input
+    if (firstName && (firstName.length < 2 || firstName.length > 100)) {
+      return res.status(400).json({
+        success: false,
+        message: 'First name must be between 2 and 100 characters',
+      });
+    }
+
+    if (lastName && (lastName.length < 2 || lastName.length > 100)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Last name must be between 2 and 100 characters',
+      });
+    }
+
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (firstName !== undefined) {
+      updates.push(`first_name = $${paramCount++}`);
+      values.push(firstName.trim());
+    }
+
+    if (lastName !== undefined) {
+      updates.push(`last_name = $${paramCount++}`);
+      values.push(lastName.trim());
+    }
+
+    if (phoneNumber !== undefined) {
+      updates.push(`phone_number = $${paramCount++}`);
+      values.push(phoneNumber.trim() || null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update',
+      });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(userId);
+
+    const query = `
+      UPDATE users 
+      SET ${updates.join(', ')} 
+      WHERE id = $${paramCount}
+      RETURNING id, email, first_name, last_name, phone_number, user_type, is_verified, created_at
+    `;
+
+    const result = await client.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    const user = result.rows[0];
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          phoneNumber: user.phone_number,
+          userType: user.user_type,
+          isVerified: user.is_verified,
+          createdAt: user.created_at,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating profile',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  } finally {
+    client.release();
+  }
+};
+
+/**
  * Delete user account
  * DELETE /api/v1/auth/account
  * Requires password confirmation for security
