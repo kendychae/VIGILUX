@@ -1,6 +1,6 @@
 const request = require('supertest');
-const app = require('../../server');
-const db = require('../../config/database');
+const app = require('../server');
+const db = require('../config/database');
 const bcrypt = require('bcrypt');
 
 describe('Authentication Integration Tests', () => {
@@ -31,7 +31,7 @@ describe('Authentication Integration Tests', () => {
       expect(response.body).toHaveProperty('message');
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('user');
-      expect(response.body.data).toHaveProperty('token');
+      expect(response.body.data).toHaveProperty('tokens');
       expect(response.body.data.user.email).toBe(global.testUser.email);
 
       testUserId = response.body.data.user.id;
@@ -45,7 +45,7 @@ describe('Authentication Integration Tests', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('message');
     });
 
     it('should reject registration with invalid email', async () => {
@@ -109,7 +109,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
-      expect(response.body.data).toHaveProperty('token');
+      expect(response.body.data).toHaveProperty('tokens');
       expect(response.body.data).toHaveProperty('user');
       expect(response.body.data.user.email).toBe(global.testUser.email);
     });
@@ -125,7 +125,7 @@ describe('Authentication Integration Tests', () => {
         .expect(401);
 
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('message');
     });
 
     it('should reject login with non-existent email', async () => {
@@ -167,7 +167,7 @@ describe('Authentication Integration Tests', () => {
           password: global.testUser.password
         });
 
-      authToken = response.body.data.token;
+      authToken = response.body.data.tokens.accessToken;
     });
 
     it('should allow access with valid token', async () => {

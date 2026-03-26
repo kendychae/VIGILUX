@@ -5,7 +5,7 @@ const db = require('../config/database');
  * POST /api/v1/reports
  */
 const createReport = async (req, res) => {
-  const client = await db.connect();
+  const client = await db.pool.connect();
 
   try {
     const {
@@ -458,7 +458,7 @@ const updateReport = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, priority } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -489,7 +489,7 @@ const updateReport = async (req, res) => {
     const report = checkResult.rows[0];
 
     // Check if user owns the report or is admin
-    if (report.user_id !== userId && req.user.user_type !== 'admin') {
+    if (report.user_id !== userId && req.user.userType !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'Forbidden',
@@ -572,7 +572,7 @@ const updateReport = async (req, res) => {
 const deleteReport = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -603,7 +603,7 @@ const deleteReport = async (req, res) => {
     const report = checkResult.rows[0];
 
     // Check if user owns the report or is admin
-    if (report.user_id !== userId && req.user.user_type !== 'admin') {
+    if (report.user_id !== userId && req.user.userType !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'Forbidden',
