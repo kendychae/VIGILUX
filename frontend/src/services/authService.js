@@ -1,6 +1,6 @@
 // Authentication service
 import apiClient from './api';
-import { storeAuthData, clearAuthData, getUserData, isAuthenticated } from '../utils/secureStorage';
+import { storeAuthData, clearAuthData, getUserData, getAccessToken, getRefreshToken, isAuthenticated } from '../utils/secureStorage';
 
 export const authService = {
   /**
