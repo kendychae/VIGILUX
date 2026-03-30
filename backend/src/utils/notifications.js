@@ -1,12 +1,15 @@
 /**
- * Firebase Cloud Messaging (FCM) Notification Service
+ * Push Notification Service
  * Issue #52 - W5: Backend Notification Service with FCM + Preferences API
  *
- * Wraps firebase-admin SDK for sending push notifications.
- * Handles token lookup, FCM dispatch, and stale token cleanup.
+ * Routes push delivery through Expo for Expo tokens and Firebase Admin for
+ * native FCM tokens. Invalid/stale tokens are removed from the database.
  */
 const admin = require('firebase-admin');
+const { Expo } = require('expo-server-sdk');
 const db = require('../config/database');
+
+const expo = new Expo();
 
 // Initialise firebase-admin once (idempotent)
 function initFirebase() {
@@ -39,8 +42,8 @@ initFirebase();
 
 /**
  * Send a push notification to a specific user.
- * Looks up all FCM tokens for the user and sends in parallel.
- * Stale/invalid tokens are removed from the database.
+ * Looks up all stored push tokens for the user and sends through the provider
+ * that matches each token.
  *
  * @param {string} userId  - UUID of the recipient
  * @param {string} title   - Notification title
@@ -49,18 +52,108 @@ initFirebase();
  * @returns {Promise<{sent: number, failed: number}>}
  */
 async function sendToUser(userId, title, body, data = {}) {
-  if (!admin.apps.length) {
-    console.warn('[FCM] Skipping notification — Firebase not initialised');
-    return { sent: 0, failed: 0 };
-  }
-
-  // Fetch user's FCM tokens
+  // Fetch user's push tokens
   const { rows: tokenRows } = await db.query(
-    'SELECT id, token FROM fcm_tokens WHERE user_id = $1',
+    'SELECT id, token, provider FROM fcm_tokens WHERE user_id = $1',
     [userId]
   );
 
   if (tokenRows.length === 0) return { sent: 0, failed: 0 };
+
+  const expoRows = [];
+  const fcmRows = [];
+
+  tokenRows.forEach((row) => {
+    const provider = row.provider || (Expo.isExpoPushToken(row.token) ? 'expo' : 'fcm');
+    if (provider === 'expo') {
+      expoRows.push(row);
+    } else {
+      fcmRows.push(row);
+    }
+  });
+
+  let sent = 0;
+  let failed = 0;
+
+  if (expoRows.length > 0) {
+    const expoResult = await sendExpoPushMessages(expoRows, title, body, data);
+    sent += expoResult.sent;
+    failed += expoResult.failed;
+  }
+
+  if (fcmRows.length > 0) {
+    const fcmResult = await sendFcmPushMessages(fcmRows, title, body, data);
+    sent += fcmResult.sent;
+    failed += fcmResult.failed;
+  }
+
+  return { sent, failed };
+}
+
+async function sendExpoPushMessages(tokenRows, title, body, data) {
+  const messages = [];
+  const invalidTokenIds = [];
+
+  tokenRows.forEach(({ id, token }) => {
+    if (!Expo.isExpoPushToken(token)) {
+      invalidTokenIds.push(id);
+      return;
+    }
+
+    messages.push({
+      to: token,
+      sound: 'default',
+      title,
+      body,
+      data,
+      priority: 'high',
+    });
+  });
+
+  let sent = 0;
+  let failed = invalidTokenIds.length;
+  const staleTokenIds = [...invalidTokenIds];
+
+  const chunks = expo.chunkPushNotifications(messages);
+
+  for (const chunk of chunks) {
+    try {
+      const tickets = await expo.sendPushNotificationsAsync(chunk);
+      tickets.forEach((ticket, index) => {
+        if (ticket.status === 'ok') {
+          sent++;
+          return;
+        }
+
+        failed++;
+        const token = chunk[index]?.to;
+        const matchingRow = tokenRows.find((row) => row.token === token);
+        if (
+          matchingRow &&
+          ticket.details?.error &&
+          ['DeviceNotRegistered', 'MessageTooBig', 'MismatchSenderId', 'InvalidCredentials'].includes(ticket.details.error)
+        ) {
+          staleTokenIds.push(matchingRow.id);
+        }
+
+        console.error('[Expo Push] Ticket error:', ticket.details?.error || ticket.message);
+      });
+    } catch (error) {
+      failed += chunk.length;
+      console.error('[Expo Push] Send chunk error:', error.message);
+    }
+  }
+
+  await deleteTokensById(staleTokenIds, 'Expo');
+
+  return { sent, failed };
+}
+
+async function sendFcmPushMessages(tokenRows, title, body, data) {
+  if (!admin.apps.length) {
+    console.warn('[FCM] Skipping native FCM delivery — Firebase not initialised');
+    return { sent: 0, failed: tokenRows.length };
+  }
 
   const messaging = admin.messaging();
   const staleTokenIds = [];
@@ -99,14 +192,24 @@ async function sendToUser(userId, title, body, data = {}) {
 
   // Clean up stale tokens
   if (staleTokenIds.length > 0) {
-    await db.query(
-      'DELETE FROM fcm_tokens WHERE id = ANY($1::uuid[])',
-      [staleTokenIds]
-    );
-    console.log(`[FCM] Removed ${staleTokenIds.length} stale token(s) for user ${userId}`);
+    await deleteTokensById(staleTokenIds, 'FCM');
   }
 
   return { sent, failed };
+}
+
+async function deleteTokensById(tokenIds, providerLabel) {
+  const uniqueTokenIds = [...new Set(tokenIds)].filter(Boolean);
+  if (uniqueTokenIds.length === 0) {
+    return;
+  }
+
+  await db.query(
+    'DELETE FROM fcm_tokens WHERE id = ANY($1::uuid[])',
+    [uniqueTokenIds]
+  );
+
+  console.log(`[${providerLabel}] Removed ${uniqueTokenIds.length} stale token(s)`);
 }
 
 /**

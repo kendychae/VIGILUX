@@ -23,8 +23,10 @@ async function runMigrations() {
     // Read schema file
     const fs = require('fs');
     const path = require('path');
+    const readSqlFile = (filePath) => fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
+
     const schemaPath = path.join(__dirname, 'schema.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
+    const schema = readSqlFile(schemaPath);
 
     // Execute schema
     await client.query(schema);
@@ -62,9 +64,16 @@ async function runMigrations() {
     // Run W5 migration: report_status_history, notification_preferences, fcm_tokens
     console.log('Running W5 migrations...');
     const w5MigrationPath = path.join(__dirname, 'migrations', '002_w5_report_status_notifications.sql');
-    const w5Migration = fs.readFileSync(w5MigrationPath, 'utf8');
+    const w5Migration = readSqlFile(w5MigrationPath);
     await client.query(w5Migration);
     console.log('✓ W5 migration completed (report_status_history, notification_preferences, fcm_tokens)');
+
+    // Run W6 migration: provider-aware push tokens for Expo + FCM delivery
+    console.log('Running W6 migrations...');
+    const w6MigrationPath = path.join(__dirname, 'migrations', '003_push_token_providers.sql');
+    const w6Migration = readSqlFile(w6MigrationPath);
+    await client.query(w6Migration);
+    console.log('✓ W6 migration completed (provider-aware push tokens)');
 
     console.log('\n✅ All migrations completed successfully!');
 

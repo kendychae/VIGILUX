@@ -321,6 +321,15 @@ const ReportScreen = ({ navigation }) => {
             <Text style={styles.headerSubtitle}>Help keep your community safe</Text>
           </View>
 
+          {/* Emergency Disclaimer */}
+          <View style={styles.disclaimer}>
+            <Text style={styles.disclaimerIcon}>🚨</Text>
+            <Text style={styles.disclaimerText}>
+              <Text style={styles.disclaimerBold}>In an emergency, call 911 immediately.</Text>
+              {' '}This form is for non-emergency reports only and is not monitored in real time.
+            </Text>
+          </View>
+
           {/* Location Section */}
           <View style={styles.section}>
             <View style={styles.labelRow}>
@@ -564,6 +573,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#6B7280',
     fontWeight: '400',
+  },
+  disclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFC107',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 20,
+  },
+  disclaimerIcon: {
+    fontSize: 18,
+    marginRight: 8,
+    marginTop: 1,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#7D4E00',
+    lineHeight: 19,
+  },
+  disclaimerBold: {
+    fontWeight: '700',
+    color: '#7D4E00',
   },
   section: {
     marginBottom: 24,

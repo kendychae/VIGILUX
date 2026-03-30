@@ -211,12 +211,12 @@ const updatePreferences = async (req, res) => {
 
 /**
  * POST /api/v1/users/fcm-token
- * Store or refresh a device FCM token
+ * Store or refresh a device push token
  */
 const storeFcmToken = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { token, platform } = req.body;
+    const { token, platform, provider } = req.body;
 
     if (!token || typeof token !== 'string' || token.trim().length === 0) {
       return res.status(400).json({ success: false, message: 'token is required' });
@@ -230,16 +230,32 @@ const storeFcmToken = async (req, res) => {
       });
     }
 
-    await db.query(
-      `INSERT INTO fcm_tokens (user_id, token, platform)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, token) DO UPDATE SET
-         platform   = EXCLUDED.platform,
-         updated_at = CURRENT_TIMESTAMP`,
-      [userId, token.trim(), platform || null]
+    const normalizedToken = token.trim();
+    const inferredProvider = provider || (
+      normalizedToken.startsWith('ExponentPushToken[') || normalizedToken.startsWith('ExpoPushToken[')
+        ? 'expo'
+        : 'fcm'
     );
 
-    return res.status(200).json({ success: true, message: 'FCM token stored' });
+    const allowedProviders = ['expo', 'fcm'];
+    if (!allowedProviders.includes(inferredProvider)) {
+      return res.status(400).json({
+        success: false,
+        message: `provider must be one of: ${allowedProviders.join(', ')}`,
+      });
+    }
+
+    await db.query(
+      `INSERT INTO fcm_tokens (user_id, token, platform, provider)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, token) DO UPDATE SET
+         platform   = EXCLUDED.platform,
+         provider   = EXCLUDED.provider,
+         updated_at = CURRENT_TIMESTAMP`,
+      [userId, normalizedToken, platform || null, inferredProvider]
+    );
+
+    return res.status(200).json({ success: true, message: 'Push token stored' });
   } catch (error) {
     console.error('storeFcmToken error:', error);
     return res.status(500).json({ success: false, message: 'Internal Server Error' });
@@ -248,7 +264,7 @@ const storeFcmToken = async (req, res) => {
 
 /**
  * DELETE /api/v1/users/fcm-token
- * Remove a specific FCM token on logout / device change
+ * Remove a specific push token on logout / device change
  */
 const deleteFcmToken = async (req, res) => {
   try {
@@ -264,7 +280,7 @@ const deleteFcmToken = async (req, res) => {
       [userId, token]
     );
 
-    return res.status(200).json({ success: true, message: 'FCM token removed' });
+    return res.status(200).json({ success: true, message: 'Push token removed' });
   } catch (error) {
     console.error('deleteFcmToken error:', error);
     return res.status(500).json({ success: false, message: 'Internal Server Error' });

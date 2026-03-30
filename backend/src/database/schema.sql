@@ -72,19 +72,22 @@ CREATE TABLE IF NOT EXISTS notifications (
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Create indexes for better query performance
-CREATE INDEX idx_reports_user_id ON reports(user_id);
-CREATE INDEX idx_reports_status ON reports(status);
-CREATE INDEX idx_reports_created_at ON reports(created_at);
-CREATE INDEX idx_media_report_id ON media(report_id);
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_is_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at);
+CREATE INDEX IF NOT EXISTS idx_media_report_id ON media(report_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = CURRENT_TIMESTAMP;
 RETURN NEW;
 END;
 $$ language 'plpgsql';
 -- Apply updated_at triggers
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE
 UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_reports_updated_at ON reports;
 CREATE TRIGGER update_reports_updated_at BEFORE
 UPDATE ON reports FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -13,6 +13,7 @@ import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 import HomeScreen from './screens/HomeScreen';
 import MapScreen from './screens/MapScreen';
 import ReportScreen from './screens/ReportScreen';
+import ReportDetailScreen from './screens/ReportDetailScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -25,6 +26,7 @@ import { NotificationProvider, useNotifications } from './contexts/NotificationC
 import { authService } from './services/authService';
 
 const Stack = createStackNavigator();
+const MainStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 /**
@@ -218,6 +220,36 @@ const MainTabs = () => {
   );
 };
 
+const MainStackScreen = () => {
+  return (
+    <MainStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#007AFF',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+        cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
+      }}
+    >
+      <MainStack.Screen
+        name="MainTabs"
+        component={MainTabs}
+        options={{ headerShown: false }}
+      />
+      <MainStack.Screen
+        name="ReportDetail"
+        component={ReportDetailScreen}
+        options={{ title: 'Report Details' }}
+      />
+    </MainStack.Navigator>
+  );
+};
+
 /**
  * Root Navigator with Protected Routes
  */
@@ -273,7 +305,7 @@ const RootNavigator = () => {
         {isAuthenticated ? (
           <Stack.Screen 
             name="Main" 
-            component={MainTabs}
+            component={MainStackScreen}
             options={{
               animationEnabled: true,
             }}

@@ -25,6 +25,9 @@ const googleMapsAndroid =
   process.env.GOOGLE_MAPS_API_KEY_ANDROID ||
   '';
 
+const googleServicesFile = process.env.GOOGLE_SERVICES_JSON || './google-services.json';
+const googleServiceInfoPlist = process.env.GOOGLE_SERVICE_INFO_PLIST || './GoogleService-Info.plist';
+
 module.exports = {
   expo: {
     name: 'VIGILUX',
@@ -44,6 +47,7 @@ module.exports = {
       supportsTablet: true,
       bundleIdentifier: 'com.vigilux.app',
       buildNumber: '1',
+      googleServicesFile: googleServiceInfoPlist,
       privacyManifests: {
         NSPrivacyAccessedAPITypes: [
           {
@@ -63,10 +67,12 @@ module.exports = {
       },
       package: 'com.vigilux.app',
       versionCode: 1,
+      googleServicesFile,
       permissions: [
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
         'CAMERA',
+        'POST_NOTIFICATIONS',
         'READ_EXTERNAL_STORAGE',
         'WRITE_EXTERNAL_STORAGE',
         'READ_MEDIA_IMAGES',
@@ -99,6 +105,7 @@ module.exports = {
       ],
       'expo-asset',
       'expo-font',
+      'expo-notifications',
       'expo-secure-store',
     ],
     extra: {

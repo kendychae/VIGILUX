@@ -1,6 +1,7 @@
 // Authentication service
 import apiClient from './api';
 import { storeAuthData, clearAuthData, getUserData, getAccessToken, getRefreshToken, isAuthenticated } from '../utils/secureStorage';
+import { deleteFcmTokenFromBackend, syncFcmTokenToBackend } from './notificationService';
 
 export const authService = {
   /**
@@ -36,6 +37,7 @@ export const authService = {
       if (response.data.success) {
         const { user, tokens } = response.data.data;
         await storeAuthData(tokens, user);
+        await syncFcmTokenToBackend();
         return { success: true, user };
       }
       
@@ -53,11 +55,13 @@ export const authService = {
    */
   logout: async () => {
     try {
+      await deleteFcmTokenFromBackend();
       await apiClient.post('/auth/logout');
       await clearAuthData();
       return { success: true };
     } catch (error) {
       // Clear local data even if server request fails
+      await deleteFcmTokenFromBackend();
       await clearAuthData();
       return { success: true };
     }

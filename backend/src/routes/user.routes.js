@@ -43,14 +43,14 @@ router.put('/preferences', updatePreferences);
 
 /**
  * @route   POST /api/v1/users/fcm-token
- * @desc    Register/refresh device FCM token (Issue #52)
+ * @desc    Register/refresh device push token (Issue #52)
  * @access  Private
  */
 router.post('/fcm-token', storeFcmToken);
 
 /**
  * @route   DELETE /api/v1/users/fcm-token
- * @desc    Remove a device FCM token on logout (Issue #52)
+ * @desc    Remove a device push token on logout (Issue #52)
  * @access  Private
  */
 router.delete('/fcm-token', deleteFcmToken);

@@ -118,7 +118,7 @@ const NotificationsScreen = ({ navigation }) => {
   const handleTap = (item) => {
     handleMarkRead(item.id);
     if (item.related_report_id) {
-      navigation.navigate('Report');
+      navigation.navigate('ReportDetail', { id: item.related_report_id });
     }
   };
 

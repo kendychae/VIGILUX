@@ -1,183 +1,252 @@
 /**
  * NotificationContext.js
- * Issue #44 — W5: Configure Firebase Cloud Messaging & Notification Architecture
- * Issue #54 — W5: Notification Listener & Notification History Screen
+ * Issue #44 - W5: Configure Push Notification Architecture
+ * Issue #54 - W5: Notification Listener & Notification History Screen
  *
- * Wires up Expo Notifications to:
+ * Wires up Expo notifications to:
  *  - Request permission and register the push token on app start
  *  - POST the token to /api/v1/users/fcm-token
  *  - Display an in-app banner when a notification arrives in the foreground
  *  - Expose a badge count and the latest notification payload to all screens
  *  - Map notification data.type to the appropriate navigation action on tap
- *
- * FCM Architecture (Issue #44):
- *  - Per-user device tokens stored in fcm_tokens table
- *  - Backend events that fire notifications:
- *      • report status changed  → notify report owner
- *      • report assigned        → notify assigned officer
- *  - Token strategy: per-user device tokens (not topics) for targeted delivery
- *  - Token lifecycle: registered on login, refreshed on app open, removed on logout
  */
 import React, {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
-import { Platform, Alert } from 'react-native';
-
-let Notifications = null;
-let Device = null;
-
-// Lazy-load expo-notifications — graceful degradation if not installed
-try {
-  Notifications = require('expo-notifications');
-  Device = require('expo-device');
-} catch (_) {
-  console.warn('[FCM] expo-notifications not installed — push disabled');
-}
-
-import apiClient from '../services/api';
-
-// ─── Context ──────────────────────────────────────────────────────────────────
+import {
+  Animated,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  addNotificationReceivedListener,
+  addNotificationResponseListener,
+  clearSystemBadgeCount,
+  configureNotifications,
+  getFcmToken,
+  getLastNotificationResponse,
+  getNotificationTarget,
+  normalizeRemoteMessage,
+  requestNotificationPermission,
+  subscribeToTokenRefresh,
+  syncFcmTokenToBackend,
+} from '../services/notificationService';
 
 export const NotificationContext = createContext({
   badgeCount: 0,
   latestNotification: null,
+  notificationsEnabled: false,
+  permissionStatus: 'unknown',
   clearBadge: () => {},
+  syncDeviceToken: async () => {},
 });
 
 export const useNotifications = () => useContext(NotificationContext);
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
-
 export const NotificationProvider = ({ children, navigationRef }) => {
   const [badgeCount, setBadgeCount] = useState(0);
   const [latestNotification, setLatestNotification] = useState(null);
+  const [bannerNotification, setBannerNotification] = useState(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState('unknown');
 
-  const notificationListener = useRef(null);
-  const responseListener = useRef(null);
+  const bannerOpacity = useRef(new Animated.Value(0)).current;
+  const hideBannerTimerRef = useRef(null);
+  const initialNotificationHandledRef = useRef(false);
 
   useEffect(() => {
-    if (!Notifications) return;
+    let foregroundSubscription = { remove: () => {} };
+    let responseSubscription = { remove: () => {} };
+    let unsubscribeTokenRefresh = () => {};
 
-    // Set foreground display options
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
+    const setup = async () => {
+      await configureNotifications();
 
-    registerForPushNotifications();
+      const permission = await requestNotificationPermission();
+      setPermissionStatus(permission.status);
+      setNotificationsEnabled(permission.enabled);
 
-    // Foreground listener → in-app banner via state
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        setLatestNotification(notification);
-        setBadgeCount((c) => c + 1);
+      if (!permission.enabled) {
+        return;
       }
-    );
 
-    // Tap listener → navigate to relevant screen
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data || {};
-        handleNotificationTap(data, navigationRef);
-        setBadgeCount(0);
+      const currentToken = await getFcmToken();
+      if (currentToken) {
+        await syncFcmTokenToBackend(currentToken);
       }
-    );
+
+      unsubscribeTokenRefresh = subscribeToTokenRefresh();
+
+      foregroundSubscription = addNotificationReceivedListener((notification) => {
+        const normalized = normalizeRemoteMessage(notification);
+        if (!normalized) {
+          return;
+        }
+
+        setLatestNotification(normalized);
+        setBadgeCount((count) => count + 1);
+        showBanner(normalized);
+      });
+
+      responseSubscription = addNotificationResponseListener((response) => {
+        routeFromNotification(response?.notification?.request?.content?.data || {}, navigationRef);
+      });
+
+      if (!initialNotificationHandledRef.current) {
+        initialNotificationHandledRef.current = true;
+        const initialNotification = await getLastNotificationResponse();
+        if (initialNotification) {
+          routeFromNotification(initialNotification.notification?.request?.content?.data || {}, navigationRef);
+        }
+      }
+    };
+
+    setup();
 
     return () => {
-      notificationListener.current?.remove();
-      responseListener.current?.remove();
+      if (hideBannerTimerRef.current) {
+        clearTimeout(hideBannerTimerRef.current);
+      }
+      foregroundSubscription.remove();
+      responseSubscription.remove();
+      unsubscribeTokenRefresh();
     };
-  }, []);
+  }, [bannerOpacity, navigationRef]);
 
   const clearBadge = () => {
     setBadgeCount(0);
-    if (Notifications) Notifications.setBadgeCountAsync(0);
+    clearSystemBadgeCount();
   };
 
-  return (
-    <NotificationContext.Provider value={{ badgeCount, latestNotification, clearBadge }}>
-      {children}
-    </NotificationContext.Provider>
-  );
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function registerForPushNotifications() {
-  if (!Notifications || !Device) return;
-
-  if (!Device.isDevice) {
-    // Expo Go on simulator — skip token registration
-    return;
-  }
-
-  try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+  const syncDeviceToken = async () => {
+    if (!notificationsEnabled) {
+      return { success: false, reason: 'disabled' };
     }
 
-    if (finalStatus !== 'granted') {
-      console.log('[FCM] Push notification permission denied');
+    return syncFcmTokenToBackend();
+  };
+
+  const contextValue = useMemo(
+    () => ({
+      badgeCount,
+      latestNotification,
+      notificationsEnabled,
+      permissionStatus,
+      clearBadge,
+      syncDeviceToken,
+    }),
+    [badgeCount, latestNotification, notificationsEnabled, permissionStatus]
+  );
+
+  const handleBannerPress = () => {
+    if (!bannerNotification) {
       return;
     }
 
-    // Get Expo push token (works with Firebase via expo-notifications on bare workflow)
-    const tokenData = await Notifications.getExpoPushTokenAsync();
-    const token = tokenData.data;
+    hideBanner();
+    routeFromNotification(bannerNotification.data || {}, navigationRef);
+  };
 
-    // Send token to backend
-    await apiClient.post('/users/fcm-token', {
-      token,
-      platform: Platform.OS,
-    });
+  return (
+    <NotificationContext.Provider value={contextValue}>
+      {children}
+      {bannerNotification ? (
+        <Animated.View style={[styles.bannerWrapper, { opacity: bannerOpacity }]} pointerEvents="box-none">
+          <TouchableOpacity activeOpacity={0.92} onPress={handleBannerPress} style={styles.bannerCard}>
+            <Text style={styles.bannerLabel}>New alert</Text>
+            <Text style={styles.bannerTitle} numberOfLines={1}>{bannerNotification.title}</Text>
+            {bannerNotification.body ? (
+              <Text style={styles.bannerBody} numberOfLines={2}>{bannerNotification.body}</Text>
+            ) : null}
+          </TouchableOpacity>
+        </Animated.View>
+      ) : null}
+    </NotificationContext.Provider>
+  );
 
-    // Android channel setup
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'VIGILUX Alerts',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#007AFF',
-      });
+  function showBanner(notification) {
+    setBannerNotification(notification);
+    Animated.timing(bannerOpacity, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+
+    if (hideBannerTimerRef.current) {
+      clearTimeout(hideBannerTimerRef.current);
     }
 
-    console.log('[FCM] Push token registered:', token);
-  } catch (error) {
-    console.error('[FCM] Token registration error:', error);
+    hideBannerTimerRef.current = setTimeout(() => {
+      hideBanner();
+    }, 4000);
+  }
+
+  function hideBanner() {
+    Animated.timing(bannerOpacity, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(() => {
+      setBannerNotification(null);
+    });
+  }
+};
+
+function routeFromNotification(data, navigationRef) {
+  if (!navigationRef?.current) {
+    return;
+  }
+
+  const target = getNotificationTarget(data);
+
+  if (target?.routeName) {
+    navigationRef.current.navigate(target.routeName, target.params);
   }
 }
 
-/**
- * Map notification data.type to navigation action
- */
-function handleNotificationTap(data, navigationRef) {
-  if (!navigationRef?.current) return;
-
-  const nav = navigationRef.current;
-
-  switch (data.type) {
-    case 'report_status_change':
-    case 'report_assigned':
-      if (data.reportId) {
-        nav.navigate('Report');
-      }
-      break;
-    case 'nearby_incident':
-      nav.navigate('Map');
-      break;
-    default:
-      nav.navigate('Notifications');
-      break;
-  }
-}
+const styles = StyleSheet.create({
+  bannerWrapper: {
+    position: 'absolute',
+    top: Platform.select({ ios: 58, android: 24, default: 24 }),
+    left: 12,
+    right: 12,
+    zIndex: 1000,
+  },
+  bannerCard: {
+    backgroundColor: '#111827',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  bannerLabel: {
+    color: '#93c5fd',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  bannerTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  bannerBody: {
+    color: '#d1d5db',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+});
