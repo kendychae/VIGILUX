@@ -1,10 +1,23 @@
 const express = require('express');
 const { body } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const authController = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { validate } = require('../middleware/validation.middleware');
 
 const router = express.Router();
+
+// Rate limiters — OWASP: protect auth endpoints from brute-force (Issue #59)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+  },
+});
 
 /**
  * Validation rules
@@ -58,10 +71,10 @@ const refreshValidation = [
  */
 
 // POST /api/v1/auth/register
-router.post('/register', registerValidation, validate, authController.register);
+router.post('/register', authLimiter, registerValidation, validate, authController.register);
 
 // POST /api/v1/auth/login
-router.post('/login', loginValidation, validate, authController.login);
+router.post('/login', authLimiter, loginValidation, validate, authController.login);
 
 // POST /api/v1/auth/refresh
 router.post('/refresh', refreshValidation, validate, authController.refresh);

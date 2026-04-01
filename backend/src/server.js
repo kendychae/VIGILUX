@@ -33,6 +33,7 @@ const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const reportRoutes = require('./routes/report.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const officerRoutes = require('./routes/officer.routes');
 
 // Middleware
 app.use(helmet());
@@ -72,6 +73,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/officer', officerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
