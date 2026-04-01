@@ -1,6 +1,7 @@
 ﻿const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth.middleware');
+const { checkStatusUpdatePermission } = require('../middleware/role.middleware');
 const {
   upload,
   validateFileSignatures,
@@ -96,9 +97,9 @@ router.delete('/:id', deleteReport);
 /**
  * @route   PATCH /api/v1/reports/:id/status
  * @desc    Update report status with state-machine validation (Issue #53)
- * @access  Private (citizens can only close own; officers/admins full control)
+ * @access  Private (citizens view-only; officers partial; admins full control) — Issue #45
  */
-router.patch('/:id/status', updateReportStatus);
+router.patch('/:id/status', checkStatusUpdatePermission, updateReportStatus);
 
 /**
  * @route   GET /api/v1/reports/:id/status-history

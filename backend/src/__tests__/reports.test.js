@@ -351,3 +351,148 @@ describe('Report API Integration Tests', () => {
     });
   });
 });
+
+/**
+ * Issue #45 — W5: Role-Based Permission System for Report Status Updates
+ *
+ * Tests every role/transition combination in the RBAC matrix:
+ *   citizen  → 403 on any status change attempt
+ *   officer  → 200 for allowed transitions; 403 for disallowed targets
+ *   admin    → 200 for any valid state-machine transition
+ */
+describe('RBAC: PATCH /api/v1/reports/:id/status', () => {
+  const bcrypt = require('bcrypt');
+
+  let citizenToken, officerToken, adminToken;
+  let citizenId, officerId, adminId;
+  let rbacReportId;
+
+  beforeAll(async () => {
+    const hash = await bcrypt.hash('Test@123', 12);
+
+    // citizen
+    const c = await db.query(
+      `INSERT INTO users (email, password_hash, first_name, last_name, user_type, is_verified, is_active)
+       VALUES ($1,$2,'RBAC','Citizen','citizen',true,true)
+       ON CONFLICT (email) DO UPDATE SET password_hash=$2 RETURNING id`,
+      ['rbac-citizen@example.com', hash]
+    );
+    citizenId = c.rows[0].id;
+
+    // officer
+    const o = await db.query(
+      `INSERT INTO users (email, password_hash, first_name, last_name, user_type, is_verified, is_active)
+       VALUES ($1,$2,'RBAC','Officer','officer',true,true)
+       ON CONFLICT (email) DO UPDATE SET password_hash=$2 RETURNING id`,
+      ['rbac-officer@example.com', hash]
+    );
+    officerId = o.rows[0].id;
+
+    // admin
+    const a = await db.query(
+      `INSERT INTO users (email, password_hash, first_name, last_name, user_type, is_verified, is_active)
+       VALUES ($1,$2,'RBAC','Admin','admin',true,true)
+       ON CONFLICT (email) DO UPDATE SET password_hash=$2 RETURNING id`,
+      ['rbac-admin@example.com', hash]
+    );
+    adminId = a.rows[0].id;
+
+    // Obtain tokens
+    const login = (email) =>
+      request(app).post('/api/v1/auth/login').send({ email, password: 'Test@123' });
+
+    citizenToken = (await login('rbac-citizen@example.com')).body.data?.tokens?.accessToken;
+    officerToken = (await login('rbac-officer@example.com')).body.data?.tokens?.accessToken;
+    adminToken   = (await login('rbac-admin@example.com')).body.data?.tokens?.accessToken;
+
+    // Create a test report owned by the citizen so we have something to transition
+    const rr = await db.query(
+      `INSERT INTO reports (user_id, title, description, incident_type, status, priority, latitude, longitude, incident_date)
+       VALUES ($1,'RBAC Test Report','A report for RBAC testing purposes','theft','submitted','low',34.05,-118.24,NOW())
+       RETURNING id`,
+      [citizenId]
+    );
+    rbacReportId = rr.rows[0].id;
+  });
+
+  afterAll(async () => {
+    if (rbacReportId) await db.query('DELETE FROM reports WHERE id=$1', [rbacReportId]);
+    if (citizenId)   await db.query('DELETE FROM users WHERE id=$1', [citizenId]);
+    if (officerId)   await db.query('DELETE FROM users WHERE id=$1', [officerId]);
+    if (adminId)     await db.query('DELETE FROM users WHERE id=$1', [adminId]);
+  });
+
+  // Helper to reset report back to 'submitted' for next test
+  const resetStatus = () =>
+    db.query("UPDATE reports SET status='submitted' WHERE id=$1", [rbacReportId]);
+
+  it('citizen: 403 on any status update attempt', async () => {
+    const res = await request(app)
+      .patch(`/api/v1/reports/${rbacReportId}/status`)
+      .set('Authorization', `Bearer ${citizenToken}`)
+      .send({ status: 'under_review' });
+    expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('officer: 200 transitioning submitted → under_review', async () => {
+    await resetStatus();
+    const res = await request(app)
+      .patch(`/api/v1/reports/${rbacReportId}/status`)
+      .set('Authorization', `Bearer ${officerToken}`)
+      .send({ status: 'under_review' });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('officer: 200 transitioning under_review → investigating', async () => {
+    // Report should now be under_review from previous test
+    const res = await request(app)
+      .patch(`/api/v1/reports/${rbacReportId}/status`)
+      .set('Authorization', `Bearer ${officerToken}`)
+      .send({ status: 'investigating' });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('officer: 200 transitioning investigating → resolved', async () => {
+    const res = await request(app)
+      .patch(`/api/v1/reports/${rbacReportId}/status`)
+      .set('Authorization', `Bearer ${officerToken}`)
+      .send({ status: 'resolved' });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('officer: 403 attempting to set status to closed', async () => {
+    await resetStatus();
+    // Move to under_review first so the state machine would otherwise allow → closed
+    await db.query("UPDATE reports SET status='under_review' WHERE id=$1", [rbacReportId]);
+    const res = await request(app)
+      .patch(`/api/v1/reports/${rbacReportId}/status`)
+      .set('Authorization', `Bearer ${officerToken}`)
+      .send({ status: 'closed' });
+    expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('admin: 200 setting any valid status (closed)', async () => {
+    await db.query("UPDATE reports SET status='resolved' WHERE id=$1", [rbacReportId]);
+    const res = await request(app)
+      .patch(`/api/v1/reports/${rbacReportId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'closed' });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('admin: 422 on invalid state-machine transition', async () => {
+    // closed → investigating is not a valid state-machine transition
+    const res = await request(app)
+      .patch(`/api/v1/reports/${rbacReportId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'investigating' });
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+  });
+});

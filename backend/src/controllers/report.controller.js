@@ -687,17 +687,8 @@ const updateReportStatus = async (req, res) => {
     const report = reportRows[0];
     const currentStatus = report.status;
 
-    // Role check: citizens can only close their own report; officers/admins can do full transitions
-    if (userType === 'citizen') {
-      if (String(report.user_id) !== String(userId)) {
-        await client.query('ROLLBACK');
-        return res.status(403).json({ success: false, message: 'Insufficient permissions' });
-      }
-      if (!['closed'].includes(newStatus)) {
-        await client.query('ROLLBACK');
-        return res.status(403).json({ success: false, message: 'Citizens may only close their own reports' });
-      }
-    }
+    // Role-based permission check is handled upstream by role.middleware.js
+    // (Issue #45). Remaining guard: citizens are blocked before reaching here.
 
     // Validate transition
     const allowed = STATUS_TRANSITIONS[currentStatus] || [];
