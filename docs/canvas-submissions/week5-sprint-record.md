@@ -84,16 +84,17 @@ No later than Tuesday each team member should record what features they will be 
 
 Record the results of your standup meeting.
 
-| Person               | Feature/Task                 | Progress Notes                                                  | Blockers/Help Needed                      |
-| -------------------- | ---------------------------- | --------------------------------------------------------------- | ----------------------------------------- |
-| Kendahl Chae Bingham | Notification Architecture    | Completed design with event-driven triggers for key actions     | None                                      |
-| Kendahl Chae Bingham | Firebase Setup               | Firebase project created, credentials configured                | None                                      |
-| Samuel Iyen Evbosaru | FCM Backend Integration      | 80% complete - testing notification delivery                    | None                                      |
-| Samuel Iyen Evbosaru | Status Transitions Logic     | Completed with state machine validation                         | None                                      |
-| Brenden Taylor Lyon  | FCM React Native Integration | 90% complete - handling notification tap actions                | None                                      |
-| Brenden Taylor Lyon  | Profile Screen UI            | 70% complete - adding image upload UI                           | None                                      |
-| Figuelia Ya'Sin      | Notification Listener        | Completed with foreground and background handling               | None                                      |
-| Figuelia Ya'Sin      | Offline Queue Implementation | In progress - implementing retry logic with exponential backoff | Need to test with poor network conditions |
+| Person               | Feature/Task                         | Progress Notes                                                                                   | Blockers/Help Needed |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------ | -------------------- |
+| Kendahl Chae Bingham | RBAC middleware (#45)                | Complete — role.middleware.js wired to PATCH /:id/status; 7 unit tests passing                   | None                 |
+| Kendahl Chae Bingham | Offline sync spec (#48)              | Complete — docs/OFFLINE-SYNC.md written with queue schema, retry/backoff, idempotency key spec   | None                 |
+| Kendahl Chae Bingham | PR #57 code review & merge           | Complete — reviewed Brenden's FCM + ReportDetailScreen PR; fast-forward merged to main           | None                 |
+| Samuel Iyen Evbosaru | FCM Backend / Notification Service   | Complete — notifications.js refactored; Expo + native FCM routing; stale token cleanup           | None                 |
+| Samuel Iyen Evbosaru | Status Transitions Logic             | Complete — state machine with PATCH /:id/status, report_status_history table and queries         | None                 |
+| Brenden Taylor Lyon  | FCM React Native Integration (#50)   | Complete — notificationService.js; permission request, token sync on login/logout, deep-link tap | None                 |
+| Brenden Taylor Lyon  | ReportDetailScreen + Status UI (#51) | Complete — vertical timeline, MediaPreview, pull-to-refresh, Edit button for owner, empty state  | None                 |
+| Figuelia Ya'Sin      | Notification History Screen (#54)    | Complete — paginated list, mark-as-read, swipe delete, empty state                               | None                 |
+| Figuelia Ya'Sin      | Offline Queue Implementation         | Spec delivered in OFFLINE-SYNC.md; implementation begins next sprint                             | None                 |
 
 ---
 
@@ -150,10 +151,11 @@ Record the results of your standup meeting.
 
 ### Success Criteria:
 
-- Users receive push notifications for report updates
-- Report status can be tracked with full history timeline
-- Users can update their profiles and settings
-- App functions with limited connectivity (offline mode)
-- Data syncs automatically when connection restored
-- Role-based permissions properly restrict actions
-- All features tested on both iOS and Android
+- ✅ Users receive push notifications for report updates (foreground banner, background tray, killed deep-link)
+- ✅ Report status can be tracked with full history timeline (ReportDetailScreen vertical timeline)
+- ✅ FCM device token registered on login, removed on logout
+- ✅ Role-based permissions properly restrict status updates (citizen→403, officer→limited set, admin→full)
+- ✅ RBAC unit tests cover all 7 role/transition matrix combinations
+- ✅ Offline sync spec documented in docs/OFFLINE-SYNC.md with queue schema, backoff strategy, and idempotency approach
+- ✅ Provider-aware push token storage (Expo + native FCM) in database
+- ✅ All features tested and merged to main + kendahlbingham branches

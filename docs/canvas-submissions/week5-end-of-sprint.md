@@ -2,7 +2,7 @@
 
 **Sprint:** Week 5 (W05 Sprint 3)  
 **Name:** Kendahl Chae Bingham (Team Lead)  
-**Date:** March 30, 2026
+**Date:** April 1, 2026
 
 ---
 
@@ -10,7 +10,7 @@
 
 Enter the link to the most recent commit you have created for this sprint.
 
-1. https://github.com/kendychae/VIGILUX/commit/[latest-week5-commit-hash]
+1. https://github.com/kendychae/VIGILUX/commit/ad014624fe6ec58b78e04036c651ad547667f7d4
 
 ---
 
@@ -18,16 +18,17 @@ Enter the link to the most recent commit you have created for this sprint.
 
 Report on the tasks for which you were the lead person:
 
-| Task Name                            | Estimated Hours | Hours Worked | Percent Complete | Is this blocked by something outside of your control? If so, describe. |
-| ------------------------------------ | --------------- | ------------ | ---------------- | ---------------------------------------------------------------------- |
-| Design notification architecture     | 5               | 5.5          | 100%             | No                                                                     |
-| Configure Firebase Cloud Messaging   | 4               | 5            | 100%             | No                                                                     |
-| Define role-based permissions        | 4               | 4            | 100%             | No                                                                     |
-| Design privacy settings and controls | 3               | 3.5          | 100%             | No                                                                     |
-| Define data sync strategy            | 4               | 4            | 100%             | No                                                                     |
-| Sprint coordination and reviews      | 3               | 4            | 100%             | No                                                                     |
+| Task Name                                                     | Estimated Hours | Hours Worked | Percent Complete | Is this blocked by something outside of your control? If so, describe. |
+| ------------------------------------------------------------- | --------------- | ------------ | ---------------- | ---------------------------------------------------------------------- |
+| Design notification architecture & event triggers             | 5               | 5.5          | 100%             | No                                                                     |
+| Configure push notification system (expo-notifications + FCM) | 4               | 5            | 100%             | No                                                                     |
+| Define RBAC matrix & implement role.middleware.js             | 4               | 5            | 100%             | No                                                                     |
+| Write RBAC unit tests (7 role/transition combos)              | 2               | 2.5          | 100%             | No                                                                     |
+| Design data sync strategy & author docs/OFFLINE-SYNC.md       | 4               | 4.5          | 100%             | No                                                                     |
+| Review & merge PR #57 (Brenden — FCM + ReportDetailScreen)    | 2               | 2            | 100%             | No                                                                     |
+| Sprint coordination, code review, and push to remote          | 3               | 3.5          | 100%             | No                                                                     |
 
-**Total Hours:** Estimated: 23 | Actual: 26
+**Total Hours:** Estimated: 24 | Actual: 28
 
 ---
 
@@ -59,13 +60,15 @@ Report on the tasks for which you were the lead person:
 
 ### Completed Features:
 
-- ✅ Push notification system with FCM integration
-- ✅ Report status tracking with timeline history
-- ✅ User profile management with image upload
-- ✅ Comprehensive settings screen with preferences
-- ✅ Offline support with automatic sync
-- ✅ Role-based permission system
-- ✅ Notification history and preferences
+- ✅ Push notification system — `expo-notifications` + Firebase/FCM backend delivery (`notifications.js` refactored for Expo & native FCM routing)
+- ✅ RBAC middleware (`role.middleware.js`) — citizens view-only, officers limited transitions, admins full access — wired to `PATCH /:id/status`
+- ✅ RBAC unit test suite — 7 role/transition combinations covering all RBAC matrix cells
+- ✅ Report detail screen (`ReportDetailScreen.js`) — full report view, vertical status timeline with timestamps and user attribution, pull-to-refresh, Edit button for owner
+- ✅ Notification service refactor (`notificationService.js`) — permission request, token lifecycle, foreground banner, background/killed deep-link routing to ReportDetail
+- ✅ Offline sync design — `docs/OFFLINE-SYNC.md` complete spec (queue schema, retry/backoff table, idempotency key strategy, conflict resolution)
+- ✅ FCM token synced to backend on login, removed on logout via `authService`
+- ✅ Provider-aware push token table (`003_push_token_providers.sql`) supporting both Expo and native FCM tokens
+- ✅ PR #57 reviewed and merged (Brenden Taylor Lyon)
 
 ### Team Performance:
 
@@ -78,10 +81,10 @@ Report on the tasks for which you were the lead person:
 ### Technical Milestones:
 
 - First real-time feature working (status updates)
-- Offline queue successfully handles >50 pending items
-- Push notifications delivering with <2 second latency
-- Profile images optimized to <200KB with maintained quality
-- Permission system preventing unauthorized actions
+- RBAC middleware blocks unauthorized status transitions (403 returned for citizen attempts, officer overreach)
+- Push notifications routing correctly across foreground (in-app banner), background (system tray), and killed (deep-link) states
+- `ReportDetailScreen` fetches report + status history concurrently; history loads non-blockingly after visible content renders
+- Offline sync spec reviewed by team; implementation queued for Figuelia in next sprint
 
 ### Challenges Overcome:
 
