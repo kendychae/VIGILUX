@@ -10,10 +10,11 @@ import {
   SafeAreaView,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { getAccessToken } from '../utils/secureStorage';
 import { getLocationWithAddress } from '../services/locationService';
 import MediaPreview from '../components/MediaPreview';
 import { showImagePickerOptions, validateImages } from '../services/imagePicker';
@@ -155,6 +156,8 @@ const ReportScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
+    Keyboard.dismiss();
+
     // Validate form
     if (!validateForm()) {
       Alert.alert('Validation Error', 'Please correct the errors and try again.');
@@ -188,7 +191,7 @@ const ReportScreen = ({ navigation }) => {
             setUploadProgress({ stage: 'compress', percentage: 0 });
 
             // Get auth token for upload
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await getAccessToken();
             const uploadUrl = `${api.defaults.baseURL}/reports/${reportId}/media`;
 
             // Compress and upload images
@@ -224,6 +227,7 @@ const ReportScreen = ({ navigation }) => {
                 ]
               );
               setLoading(false);
+              setUploadProgress({ stage: '', percentage: 0 });
               return;
             }
           } catch (uploadError) {
@@ -239,6 +243,7 @@ const ReportScreen = ({ navigation }) => {
               ]
             );
             setLoading(false);
+            setUploadProgress({ stage: '', percentage: 0 });
             return;
           }
         }
@@ -260,6 +265,13 @@ const ReportScreen = ({ navigation }) => {
               style: 'cancel',
             },
           ]
+        );
+      } else {
+        setLoading(false);
+        setUploadProgress({ stage: '', percentage: 0 });
+        Alert.alert(
+          'Submission Error',
+          response.data.message || 'The report could not be submitted. Please try again.'
         );
       }
     } catch (error) {

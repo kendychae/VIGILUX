@@ -34,8 +34,26 @@ const STATUS_LABELS = {
   closed: 'Closed',
 };
 
+const PRIORITY_COLORS = {
+  low: '#4CAF50',
+  medium: '#FFC107',
+  high: '#FF9800',
+  urgent: '#F44336',
+};
+
+const PRIORITY_LIGHT_COLORS = {
+  low: '#eaf7ec',
+  medium: '#fff8df',
+  high: '#fff1e6',
+  urgent: '#fdebec',
+};
+
 const ReportDetailScreen = ({ route, navigation }) => {
   const reportId = route?.params?.id || route?.params?.reportId;
+  const source = route?.params?.source;
+  const reportIds = Array.isArray(route?.params?.reportIds) ? route.params.reportIds : [];
+  const currentAlertIndex = reportIds.findIndex((id) => id === reportId);
+  const canCycleReports = source === 'alerts' && reportIds.length > 1 && currentAlertIndex >= 0;
 
   const [report, setReport] = useState(null);
   const [history, setHistory] = useState([]);
@@ -108,6 +126,46 @@ const ReportDetailScreen = ({ route, navigation }) => {
     Alert.alert('Edit Report', 'Editing is not available from this preview screen yet.');
   };
 
+  const handleBackToAlerts = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('AlertsTab');
+  };
+
+  const handlePreviousReport = () => {
+    if (!canCycleReports) {
+      return;
+    }
+
+    const previousIndex = (currentAlertIndex - 1 + reportIds.length) % reportIds.length;
+    const previousId = reportIds[previousIndex];
+
+    navigation.replace('ReportDetail', {
+      id: previousId,
+      source: 'alerts',
+      reportIds,
+      startIndex: previousIndex,
+    });
+  };
+
+  const handleNextReport = () => {
+    if (!canCycleReports) {
+      return;
+    }
+
+    const nextIndex = (currentAlertIndex + 1) % reportIds.length;
+    const nextId = reportIds[nextIndex];
+
+    navigation.replace('ReportDetail', {
+      id: nextId,
+      source: 'alerts',
+      reportIds,
+      startIndex: nextIndex,
+    });
+  };
+
   const canEdit = report && currentUser && report.user_id === currentUser.id;
 
   // Pre-format history timestamps once instead of on every render
@@ -154,6 +212,23 @@ const ReportDetailScreen = ({ route, navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#007AFF" />
         }
       >
+        {source === 'alerts' && report?.priority ? (
+          <View
+            style={[
+              styles.priorityAlertBanner,
+              {
+                backgroundColor: PRIORITY_COLORS[report.priority] || '#9CA3AF',
+                borderColor: PRIORITY_COLORS[report.priority] || '#9CA3AF',
+              },
+            ]}
+          >
+            <Text style={styles.priorityAlertBannerText}>
+              {formatPriorityLabel(report.priority)} Priority Alert
+            </Text>
+            <Text style={styles.priorityAlertBannerSubtext}>Opened from Alerts</Text>
+          </View>
+        ) : null}
+
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.title}>{report.title}</Text>
@@ -166,7 +241,18 @@ const ReportDetailScreen = ({ route, navigation }) => {
           )}
         </View>
 
-        <View style={styles.card}>
+        <View
+          style={[
+            styles.card,
+            source === 'alerts' && report?.priority
+              ? {
+                  backgroundColor: PRIORITY_LIGHT_COLORS[report.priority] || '#fff',
+                  borderColor: PRIORITY_COLORS[report.priority] || '#e5e7eb',
+                  borderWidth: 1,
+                }
+              : null,
+          ]}
+        >
           <Text style={styles.sectionTitle}>Incident Details</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Type</Text>
@@ -234,6 +320,32 @@ const ReportDetailScreen = ({ route, navigation }) => {
             ))
           )}
         </View>
+
+        {source === 'alerts' ? (
+          <View style={styles.alertNavSection}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBackToAlerts}>
+              <Text style={styles.backButtonText}>← Back to Alerts</Text>
+            </TouchableOpacity>
+
+            <View style={styles.navButtonsRow}>
+              <TouchableOpacity
+                style={[styles.previousButton, !canCycleReports && styles.nextButtonDisabled]}
+                onPress={handlePreviousReport}
+                disabled={!canCycleReports}
+              >
+                <Text style={styles.previousButtonText}>← Previous</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.nextButton, !canCycleReports && styles.nextButtonDisabled]}
+                onPress={handleNextReport}
+                disabled={!canCycleReports}
+              >
+                <Text style={styles.nextButtonText}>Next →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -248,6 +360,11 @@ function formatDateTime(isoString) {
 function formatCoordinates(lat, lng) {
   if (lat == null || lng == null) return null;
   return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+}
+
+function formatPriorityLabel(priority) {
+  if (!priority) return 'Unknown';
+  return priority.charAt(0).toUpperCase() + priority.slice(1);
 }
 
 const styles = StyleSheet.create({
@@ -270,6 +387,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+  },
+  priorityAlertBanner: {
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  priorityAlertBannerText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  priorityAlertBannerSubtext: {
+    color: '#fff',
+    fontSize: 12,
+    opacity: 0.95,
+    marginTop: 2,
+    fontWeight: '600',
   },
   title: {
     fontSize: 28,
@@ -386,6 +524,53 @@ const styles = StyleSheet.create({
     color: '#374151',
     fontSize: 14,
     lineHeight: 20,
+  },
+  alertNavSection: {
+    marginBottom: 10,
+    gap: 10,
+  },
+  navButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  backButton: {
+    backgroundColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: '#111827',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  previousButton: {
+    flex: 1,
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  previousButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  nextButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  nextButtonDisabled: {
+    backgroundColor: '#9ca3af',
+  },
+  nextButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
 
