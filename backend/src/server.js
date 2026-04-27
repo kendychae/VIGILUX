@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 // ── Production safety guards ──────────────────────────────────────────────────
 const INSECURE_DEFAULTS = [
@@ -47,6 +48,24 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Trust the first proxy (required for correct client IP behind Render/Heroku/Nginx)
+app.set('trust proxy', 1);
+
+// Global API rate limiter — OWASP A04: protect all public API endpoints from abuse.
+// Auth endpoints retain their own stricter limiter in routes/auth.routes.js.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 300 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again later.',
+  },
+});
+app.use('/api/', apiLimiter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
